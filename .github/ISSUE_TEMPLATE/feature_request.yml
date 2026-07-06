@@ -1,0 +1,27 @@
+name: Feature Request
+description: Suggest a new feature or model
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - model
+        - evaluation
+        - pipeline
+        - serving
+        - docs
+        - other
