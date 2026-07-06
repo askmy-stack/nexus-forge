@@ -1,13 +1,16 @@
-FROM python:3.8-slim-buster
+FROM python:3.11-slim
 
-RUN apt update -y && apt install awscli -y
 WORKDIR /app
 
-COPY . /app
+RUN pip install --no-cache-dir uv
 
-RUN pip install -r requirements.txt
-RUN pip install --upgrade accelerate
-RUN pip uninstall -y transformers accelerate
-RUN pip install transformers accelerate
+COPY pyproject.toml ./
+COPY src/ src/
+COPY config/ config/
+COPY params.yaml ./
 
-CMD ["python3", "app.py"]
+RUN uv pip install --system -e .
+
+EXPOSE 8080
+
+CMD ["uvicorn", "textSummarizer.serving.app:app", "--host", "0.0.0.0", "--port", "8080"]
