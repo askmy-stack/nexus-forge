@@ -96,6 +96,24 @@ async def test_summarize_multimodal_video_json():
 
 
 @pytest.mark.asyncio
+async def test_summarize_hierarchical_strategy():
+    transport = ASGITransport(app=app)
+    text = ". ".join([f"Sentence number {i} with useful content here" for i in range(25)])
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/summarize",
+            json={
+                "text": text,
+                "model": "extractive",
+                "strategy": "hierarchical",
+                "max_length": 64,
+            },
+        )
+    assert response.status_code == 200
+    assert response.json()["strategy"] == "hierarchical"
+
+
+@pytest.mark.asyncio
 async def test_summarize_unknown_model_returns_422():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

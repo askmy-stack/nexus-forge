@@ -8,9 +8,16 @@ sdk_version: "5.50.0"
 app_file: app.py
 pinned: false
 license: mit
+hardware: zero-gpu
 ---
 
-Check the main [repository](https://github.com/askmy-stack/nexus-forge) for full documentation.
+GPU-backed abstractive summarization demo for [Nexus Forge](https://github.com/askmy-stack/nexus-forge).
+
+## Features
+
+- Default model: **BART** (`facebook/bart-large-cnn`) on GPU via `@spaces.GPU`
+- Models: BART, FLAN-T5, T5, Pegasus, extractive
+- Strategies: stuff, map_reduce, refine, hierarchical, rag
 
 ## Deploy to Hugging Face Spaces
 
@@ -18,20 +25,24 @@ Check the main [repository](https://github.com/askmy-stack/nexus-forge) for full
 # 1. Authenticate (one-time)
 hf auth login
 
-# 2. Create the Space (one-time; pick your HF username)
-hf repo create summarizehub --type space --space-sdk gradio
+# 2. Deploy from repo root (creates Space if missing)
+export HF_USERNAME=your-hf-username
+export HF_SPACE_NAME=summarizehub   # optional, default: summarizehub
+./scripts/deploy_hf_space.sh
 
-# 3. Upload from repo root
-hf upload <your-hf-username>/summarizehub spaces/ --repo-type space
-
-# 4. Open the Space URL and verify the Gradio demo loads
+# Or manually:
+hf repo create summarizehub --type space --space-sdk gradio --space-hardware zero-gpu
+hf upload <username>/summarizehub spaces/ --repo-type space
 ```
 
-For Pegasus fine-tuning and model publishing:
+Enable **ZeroGPU** in Space settings for free GPU bursts. The `@spaces.GPU` decorator in `app.py` requests GPU only during inference.
+
+## Local development
 
 ```bash
-# Requires GPU + HF token
-export HF_TOKEN=hf_...
-uv run python scripts/run_pipeline.py   # stages 4-5: train + evaluate
-hf upload <your-hf-username>/pegasus-samsum artifacts/model_trainer/pegasus-samsum-model --repo-type model
+cd spaces
+pip install -r requirements.txt
+python app.py
 ```
+
+For full repo docs see the [main README](https://github.com/askmy-stack/nexus-forge).

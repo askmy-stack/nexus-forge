@@ -18,7 +18,7 @@
 
 - **Four modalities** — text, image (BLIP captioning), audio (Whisper ASR), video (ffmpeg + ASR + keyframe captions)
 - **Multi-model registry** — Pegasus, BART, T5, FLAN-T5, LongT5, extractive TextRank-style ranking
-- **Long-document strategies** — stuff, map-reduce, refine with semantic chunking
+- **Long-document strategies** — stuff, map-reduce, refine, hierarchical (RAPTOR), and RAG retrieval
 - **MCP server** — 6 tools: `summarize_text`, `summarize_image`, `summarize_audio`, `summarize_video`, `list_models`, `grade_summary`
 - **Grading loop** — subjective rubric (coherence, faithfulness, fluency, relevance) with summarize → grade → refine
 - **FastAPI serving** — `/summarize`, `/summarize/multimodal`, `/grade`, `/models`, `/train`
@@ -41,6 +41,7 @@ flowchart LR
     ROUTER[Multimodal Router]
     REG[Model Registry]
     SUM[Summarize]
+    STRAT[Strategy Router]
     GRADE[Grade Rubric]
     REFINE[Refine Loop]
 
@@ -48,7 +49,7 @@ flowchart LR
     IMG --> ROUTER
     AUD --> ROUTER
     VID --> ROUTER
-    ROUTER --> REG --> SUM --> GRADE
+    ROUTER --> REG --> STRAT --> SUM --> GRADE
     GRADE -->|score < threshold| REFINE --> SUM
     GRADE -->|pass| OUT[Summary]
 ```
@@ -71,6 +72,9 @@ Clients: **CLI** · **FastAPI** · **MCP** · **Gradio Space** · **Cursor agent
 ## Quick start
 
 ```bash
+# Install from PyPI (or editable from source)
+pip install nexus-forge
+
 git clone https://github.com/askmy-stack/nexus-forge.git
 cd nexus-forge
 uv sync --group dev
@@ -216,12 +220,36 @@ docs/assets/          # Demo GIF and static fallback
 
 ```bash
 uv sync --extra multimodal   # image + audio + video
-uv sync --extra mcp            # MCP server
-uv sync --extra demo           # Gradio Space
-uv sync --extra eval           # BERTScore
+uv sync --extra mcp          # MCP server
+uv sync --extra demo         # Gradio Space
+uv sync --extra eval         # BERTScore
+uv sync --extra onnx         # ONNX export + ORT inference
+uv sync --extra rag          # BM25 + sentence-transformers RAG
 ```
 
 Video requires **ffmpeg** on `PATH` (`brew install ffmpeg` / `apt install ffmpeg`).
+
+---
+
+## ONNX inference
+
+Export BART/T5-family models to ONNX for faster CPU inference:
+
+```bash
+uv sync --extra onnx
+uv run python scripts/export_onnx.py --model bart --output-dir artifacts/onnx/bart
+
+# Use exported model
+python -c "
+from textSummarizer.models import ModelFactory
+s = ModelFactory.create('bart', onnx_dir='artifacts/onnx/bart')
+print(s.summarize('AI is reshaping healthcare.', max_length=64))
+"
+```
+
+Supported export models: `bart`, `t5`, `flan-t5`, `pegasus`, `pegasus-xsum`, `longt5`.
+
+Publish to PyPI: tag a release (`git tag v1.1.0 && git push origin v1.1.0`) or run `./scripts/publish_pypi.sh --upload` with `PYPI_API_TOKEN` set.
 
 ---
 
@@ -233,10 +261,10 @@ Video requires **ffmpeg** on `PATH` (`brew install ffmpeg` / `apt install ffmpeg
 | ✅ | MCP server + Cursor skill |
 | ✅ | Subjective grading loop |
 | ✅ | 5-stage training pipeline |
-| 🔜 | PyPI publish (`pip install nexus-forge`) |
-| 🔜 | ONNX export for faster inference |
-| 🔜 | HuggingFace Space with GPU-backed abstractive models |
-| 🔜 | Hierarchical and RAG-based summarization strategies |
+| ✅ | PyPI publish (`pip install nexus-forge`) |
+| ✅ | ONNX export for faster inference |
+| ✅ | HuggingFace Space with GPU-backed abstractive models |
+| ✅ | Hierarchical and RAG-based summarization strategies |
 
 ---
 

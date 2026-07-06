@@ -22,6 +22,33 @@ uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
 uv run python -m textSummarizer.cli --text "..." --model extractive
 ```
 
+## Publishing to PyPI
+
+1. Set a PyPI API token: [pypi.org/manage/account/token](https://pypi.org/manage/account/token/)
+2. Add `PYPI_API_TOKEN` as a GitHub repository secret (used by `.github/workflows/publish.yml`)
+3. Build and verify locally:
+
+```bash
+./scripts/publish_pypi.sh          # dry run (build + twine check)
+export PYPI_API_TOKEN=pypi-...     # never commit this token
+./scripts/publish_pypi.sh --upload # manual upload
+```
+
+4. Or push a version tag to trigger CI publish:
+
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+## HuggingFace Space deploy
+
+```bash
+hf auth login
+export HF_USERNAME=your-username
+./scripts/deploy_hf_space.sh
+```
+
 ## Contribution areas
 
 | Label | Examples |

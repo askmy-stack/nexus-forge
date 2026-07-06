@@ -1,11 +1,24 @@
 [project]
-name = "text-summarizer"
-version = "1.0.0"
+name = "nexus-forge"
+version = "1.1.0"
 description = "Multimodal summarization platform with MCP agent integration and subjective grading"
 authors = [{ name = "Abhinaysai Kamineni", email = "askmy-stack@users.noreply.github.com" }]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
+keywords = ["nlp", "summarization", "transformers", "mcp", "multimodal", "onnx"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Text Processing :: Linguistic",
+]
 dependencies = [
   "transformers>=4.46,<6",
   "torch>=2.5",
@@ -27,12 +40,21 @@ dependencies = [
   "protobuf>=4.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/askmy-stack/nexus-forge"
+Repository = "https://github.com/askmy-stack/nexus-forge"
+Documentation = "https://github.com/askmy-stack/nexus-forge#readme"
+Issues = "https://github.com/askmy-stack/nexus-forge/issues"
+Changelog = "https://github.com/askmy-stack/nexus-forge/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 eval = ["bert-score>=0.3.13"]
 demo = ["gradio>=5.0"]
 mlops = ["mlflow>=2.19", "wandb>=0.19", "dvc>=3.0"]
 multimodal = ["pillow>=10.0", "soundfile>=0.12"]
 mcp = ["mcp>=1.0"]
+onnx = ["optimum[onnxruntime]>=1.23", "onnxruntime>=1.19"]
+rag = ["rank-bm25>=0.2.2", "sentence-transformers>=3.0"]
 
 [project.scripts]
 text-summarizer = "textSummarizer.cli:main"
@@ -72,7 +94,7 @@ addopts = ["-ra", "--strict-markers", "--strict-config"]
 markers = [
   "gpu: tests requiring GPU",
   "slow: slow integration tests",
-  "network: tests requiring network access",
+  "network: tests requiring network",
 ]
 
 [tool.coverage.run]
