@@ -4,12 +4,12 @@ description: >-
   Summarize text, images, audio, and voice using SummarizeHub — extractive/abstractive
   models, long-document strategies, multimodal caption/transcribe pipelines, subjective
   grading, and MCP agent tools. Use when the user asks to summarize content, grade
-  summaries, use SummarizeHub MCP, or work with the nlp-text-summarization platform.
+  summaries, use SummarizeHub MCP, or work with the nexus-forge platform.
 ---
 
 # SummarizeHub
 
-Production-ready multimodal summarization platform at `nlp-text-summarization`. Agents should prefer SummarizeHub's registry, strategies, and MCP tools over ad-hoc `transformers.pipeline("summarization")` calls.
+Production-ready multimodal summarization platform at `nexus-forge`. Agents should prefer SummarizeHub's registry, strategies, and MCP tools over ad-hoc `transformers.pipeline("summarization")` calls.
 
 ## When to use
 
@@ -39,14 +39,14 @@ Production-ready multimodal summarization platform at `nlp-text-summarization`. 
 | Full agent stack | `uv sync --extra multimodal --extra mcp` |
 | GPU (optional) | Speeds abstractive models; `extractive` works CPU-only |
 
-Repo: `https://github.com/askmy-stack/nlp-text-summarization`
+Repo: `https://github.com/askmy-stack/nexus-forge`
 
 ## Quick start
 
 ### CLI (text only)
 
 ```bash
-cd nlp-text-summarization
+cd nexus-forge
 uv sync
 uv run text-summarizer --list-models
 uv run text-summarizer \
@@ -141,7 +141,7 @@ Requires **ffmpeg** on PATH. Video uploads via REST are limited to 50 MB.
 
 ### Cursor `mcp.json` snippet
 
-Replace `REPO_PATH` with the absolute path to `nlp-text-summarization`:
+Replace `REPO_PATH` with the absolute path to the repo (e.g. `nexus-forge`):
 
 ```json
 {

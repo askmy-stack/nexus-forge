@@ -2,7 +2,7 @@
 
 > **Multimodal Summarization Platform** — summarize text, images, audio, and video with transformer models, subjective LLM grading, MCP agent integration, and a FastAPI serving layer.
 
-[![CI](https://github.com/askmy-stack/nlp-text-summarization/actions/workflows/ci.yml/badge.svg)](https://github.com/askmy-stack/nlp-text-summarization/actions/workflows/ci.yml)
+[![CI](https://github.com/askmy-stack/nexus-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/askmy-stack/nexus-forge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![HuggingFace](https://img.shields.io/badge/🤗-Spaces-yellow)](https://huggingface.co/spaces)
@@ -122,8 +122,8 @@ flowchart TB
 ## Quick start
 
 ```bash
-git clone https://github.com/askmy-stack/nlp-text-summarization.git
-cd nlp-text-summarization
+git clone https://github.com/askmy-stack/nexus-forge.git
+cd nexus-forge
 uv sync --group dev
 
 # List models
@@ -165,7 +165,7 @@ uv run python -m textSummarizer.mcp.server
       "args": [
         "run",
         "--directory",
-        "/path/to/nlp-text-summarization",
+        "/path/to/nexus-forge",
         "python",
         "-m",
         "textSummarizer.mcp.server"

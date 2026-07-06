@@ -5,7 +5,7 @@ Base URL: `http://localhost:8080`
 Start the server:
 
 ```bash
-cd nlp-text-summarization
+cd nexus-forge
 uv sync --extra multimodal
 uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
 ```
@@ -17,7 +17,7 @@ curl http://localhost:8080/health
 ```
 
 ```json
-{"status": "ok", "version": "0.1.0", "models_available": 7}
+{"status": "ok", "version": "1.0.0", "models_available": 7}
 ```
 
 ## List models
