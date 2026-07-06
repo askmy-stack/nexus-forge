@@ -10,10 +10,20 @@ OUT = Path(__file__).resolve().parents[1] / "docs" / "assets" / "demo.png"
 
 
 def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    arial = (
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+        if bold
+        else "/System/Library/Fonts/Supplemental/Arial.ttf"
+    )
+    dejavu = (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        if bold
+        else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    )
     candidates = (
         "/System/Library/Fonts/Supplemental/Menlo.ttc",
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        arial,
+        dejavu,
     )
     for path in candidates:
         if Path(path).exists():
@@ -56,7 +66,13 @@ def main() -> None:
     output_x = input_x + input_w + gap
 
     def panel(x: int, w: int, label: str, label_color: str) -> None:
-        draw.rounded_rectangle((x, panel_y, x + w, panel_y + panel_h), radius=16, fill="#111827", outline="#334155", width=2)
+        draw.rounded_rectangle(
+            (x, panel_y, x + w, panel_y + panel_h),
+            radius=16,
+            fill="#111827",
+            outline="#334155",
+            width=2,
+        )
         draw.text((x + 20, panel_y + 24), label, fill=label_color, font=label_font)
 
     panel(input_x, input_w, "INPUT", "#38bdf8")
@@ -100,7 +116,13 @@ def main() -> None:
         (output_x, 150, "POST /summarize", "#0f766e", "#14b8a6", "#ecfdf5"),
     ]
     for x, w, text, fill, outline, color in badges:
-        draw.rounded_rectangle((x, badge_y, x + w, badge_y + 30), radius=15, fill=fill, outline=outline, width=1)
+        draw.rounded_rectangle(
+            (x, badge_y, x + w, badge_y + 30),
+            radius=15,
+            fill=fill,
+            outline=outline,
+            width=1,
+        )
         bbox = draw.textbbox((0, 0), text, font=badge_font)
         tw = bbox[2] - bbox[0]
         draw.text((x + (w - tw) / 2, badge_y + 7), text, fill=color, font=badge_font)
