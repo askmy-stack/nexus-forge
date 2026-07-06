@@ -10,6 +10,31 @@ from textSummarizer.pipelines.refine import refine_summarize
 from textSummarizer.pipelines.stuff import stuff_summarize
 
 
+def _extractive_stuff(text: str, max_length: int) -> str:
+    """Score sentences by word frequency and return the top-ranked subset."""
+    sentences = ExtractiveSummarizer._split_sentences(text)
+    if not sentences:
+        return ""
+
+    words = re.findall(r"\w+", text.lower())
+    freq: dict[str, int] = {}
+    for word in words:
+        freq[word] = freq.get(word, 0) + 1
+
+    scored = []
+    for idx, sentence in enumerate(sentences):
+        sentence_words = re.findall(r"\w+", sentence.lower())
+        if not sentence_words:
+            continue
+        score = sum(freq.get(w, 0) for w in sentence_words) / len(sentence_words)
+        scored.append((score, idx, sentence))
+
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    top_n = max(1, min(len(scored), max(1, max_length // 20)))
+    selected = sorted(scored[:top_n], key=lambda x: x[1])
+    return " ".join(s for _, _, s in selected)
+
+
 class AbstractiveSummarizer(BaseSummarizer):
     def __init__(
         self,
@@ -69,25 +94,8 @@ class ExtractiveSummarizer(BaseSummarizer):
         return [s.strip() for s in sentences if s.strip()]
 
     def summarize(self, text: str, max_length: int = 128, strategy: str = "stuff") -> str:
-        sentences = self._split_sentences(text)
-        if not sentences:
-            return ""
-
-        # Score sentences by word frequency in document (simple TF-based ranking)
-        words = re.findall(r"\w+", text.lower())
-        freq: dict[str, int] = {}
-        for word in words:
-            freq[word] = freq.get(word, 0) + 1
-
-        scored = []
-        for idx, sentence in enumerate(sentences):
-            sentence_words = re.findall(r"\w+", sentence.lower())
-            if not sentence_words:
-                continue
-            score = sum(freq.get(w, 0) for w in sentence_words) / len(sentence_words)
-            scored.append((score, idx, sentence))
-
-        scored.sort(key=lambda x: (-x[0], x[1]))
-        top_n = max(1, min(len(scored), max(1, max_length // 20)))
-        selected = sorted(scored[:top_n], key=lambda x: x[1])
-        return " ".join(s for _, _, s in selected)
+        if strategy == "map_reduce":
+            return map_reduce_summarize(text, self, max_length=max_length)
+        if strategy == "refine":
+            return refine_summarize(text, self, max_length=max_length)
+        return _extractive_stuff(text, max_length)
