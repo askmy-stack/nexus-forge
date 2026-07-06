@@ -33,10 +33,10 @@ Production-ready multimodal summarization platform at `nexus-forge`. Agents shou
 | Python 3.11+ | `requires-python = ">=3.11,<3.14"` |
 | [uv](https://docs.astral.sh/uv/) | Package manager |
 | Base install | `uv sync` in repo root |
-| Multimodal (image/audio/video) | `uv sync --extra multimodal` — adds Pillow, soundfile |
+| Multimodal (image/audio/video) | `uv pip install -e ".[multimodal]"` — adds Pillow, soundfile |
 | Video extraction | [ffmpeg](https://ffmpeg.org/download.html) on PATH (system dependency) |
-| MCP server | `uv sync --extra mcp` — adds `mcp>=1.0` |
-| Full agent stack | `uv sync --extra multimodal --extra mcp` |
+| MCP server | `uv pip install -e ".[mcp]"` — adds `mcp>=1.0` |
+| Full agent stack | `uv pip install -e ".[multimodal,mcp]"` |
 | GPU (optional) | Speeds abstractive models; `extractive` works CPU-only |
 
 Repo: `https://github.com/askmy-stack/nexus-forge`
@@ -48,23 +48,23 @@ Repo: `https://github.com/askmy-stack/nexus-forge`
 ```bash
 cd nexus-forge
 uv sync
-uv run text-summarizer --list-models
-uv run text-summarizer \
-  --text "AI is transforming industries. Machine learning enables automation." \
-  --model extractive --strategy map_reduce
+curl http://localhost:8080/models
+uv run text-summarizer summarize \
+  "AI is transforming industries. Machine learning enables automation." \
+  model extractive strategy map_reduce
 ```
 
 ### REST API
 
 ```bash
-uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
+uv run uvicorn textSummarizer.serving.app:app -p 8080
 curl http://localhost:8080/health
 ```
 
 ### MCP server
 
 ```bash
-uv sync --extra multimodal --extra mcp
+uv pip install -e ".[multimodal,mcp]"
 uv run summarizehub-mcp
 # or: uv run python -m textSummarizer.mcp.server
 ```
@@ -147,12 +147,10 @@ Replace `REPO_PATH` with the absolute path to the repo (e.g. `nexus-forge`):
 {
   "mcpServers": {
     "summarizehub": {
-      "command": "uv",
+      "command": "bash",
       "args": [
-        "run",
-        "--directory",
-        "REPO_PATH",
-        "summarizehub-mcp"
+        "-c",
+        "cd REPO_PATH && uv run summarizehub-mcp"
       ]
     }
   }
@@ -299,8 +297,8 @@ Gradio demo in `spaces/` — suitable for human-facing UI, not agent automation.
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `Unknown model 'X'` | Invalid model name | Call `list_models` / `GET /models` |
-| `ImportError: multimodal extras` | Missing Pillow/soundfile | `uv sync --extra multimodal` |
-| MCP server won't start | Missing mcp package | `uv sync --extra mcp` |
+| `ImportError: multimodal extras` | Missing Pillow/soundfile | `uv pip install -e ".[multimodal]"` |
+| MCP server won't start | Missing mcp package | `uv pip install -e ".[mcp]"` |
 | Slow first request | Model download/load | Expected; models cache in `~/.cache/huggingface` |
 | OOM on GPU | Large abstractive model | Use `extractive` or smaller model (`flan-t5`) |
 | `NotImplementedError` for video | Old SummarizeHub versions | Upgrade; install ffmpeg on PATH |

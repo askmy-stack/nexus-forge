@@ -12,44 +12,141 @@ OUT = Path(__file__).resolve().parents[1] / "docs" / "assets" / "demo.gif"
 FRAME_MS = 900
 HOLD_FRAMES = 3
 
+# Layout tokens
+MARGIN = 48
+PANEL_GAP = 72
+PANEL_RADIUS = 14
+LABEL_OFFSET_Y = 22
+TEXT_PAD = 22
+TEXT_TOP = 58
+LINE_SPACING = 7
 
-def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    arial = (
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-        if bold
-        else "/System/Library/Fonts/Supplemental/Arial.ttf"
-    )
-    dejavu = (
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-        if bold
-        else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    )
-    candidates = (
-        "/System/Library/Fonts/Supplemental/Menlo.ttc",
-        arial,
-        dejavu,
-    )
+
+def _font(
+    size: int,
+    bold: bool = False,
+    mono: bool = False,
+) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    if mono:
+        candidates = (
+            "/System/Library/Fonts/Supplemental/Menlo.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        )
+    else:
+        arial = (
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+            if bold
+            else "/System/Library/Fonts/Supplemental/Arial.ttf"
+        )
+        dejavu = (
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+            if bold
+            else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        )
+        candidates = (arial, dejavu)
     for path in candidates:
         if Path(path).exists():
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
 
 
+def _text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> int:
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return bbox[2] - bbox[0]
+
+
+def _line_height(font: ImageFont.ImageFont) -> int:
+    if hasattr(font, "size"):
+        return int(font.size * 1.35)
+    return 20
+
+
+def _wrap_text(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    font: ImageFont.ImageFont,
+    max_width: int,
+) -> list[str]:
+    if not text:
+        return []
+    words = text.split()
+    lines: list[str] = []
+    current: list[str] = []
+    for word in words:
+        trial = " ".join([*current, word]) if current else word
+        if _text_width(draw, trial, font) <= max_width:
+            current.append(word)
+        else:
+            if current:
+                lines.append(" ".join(current))
+            current = [word]
+    if current:
+        lines.append(" ".join(current))
+    return lines
+
+
+def _truncate_lines(
+    draw: ImageDraw.ImageDraw,
+    lines: list[str],
+    font: ImageFont.ImageFont,
+    max_width: int,
+    max_lines: int,
+) -> list[str]:
+    if max_lines <= 0:
+        return []
+    if len(lines) <= max_lines:
+        return lines
+    clipped = lines[:max_lines]
+    last = clipped[-1]
+    ellipsis = "..."
+    while last and _text_width(draw, last + ellipsis, font) > max_width:
+        last = last[:-1]
+    clipped[-1] = (last.rstrip() + ellipsis) if last else ellipsis
+    return clipped
+
+
+def _draw_text_in_box(
+    draw: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    text: str,
+    font: ImageFont.ImageFont,
+    color: str,
+) -> None:
+    content_x = x + TEXT_PAD
+    content_y = y + TEXT_TOP
+    content_w = w - 2 * TEXT_PAD
+    content_h = h - TEXT_TOP - TEXT_PAD
+    line_h = _line_height(font)
+    max_lines = max(1, content_h // line_h)
+    lines = _truncate_lines(
+        draw,
+        _wrap_text(draw, text, font, content_w),
+        font,
+        content_w,
+        max_lines,
+    )
+    for i, line in enumerate(lines):
+        draw.text((content_x, content_y + i * line_h), line, fill=color, font=font)
+
+
 def _gradient_bg() -> Image.Image:
-    img = Image.new("RGB", (WIDTH, HEIGHT), "#0f172a")
+    img = Image.new("RGB", (WIDTH, HEIGHT), "#0b1220")
     draw = ImageDraw.Draw(img)
     for y in range(HEIGHT):
         t = y / HEIGHT
-        r = int(15 + t * (30 - 15))
-        g = int(23 + t * (58 - 23))
-        b = int(42 + t * (95 - 42))
+        r = int(11 + t * (22 - 11))
+        g = int(18 + t * (45 - 18))
+        b = int(32 + t * (78 - 32))
         draw.line([(0, y), (WIDTH, y)], fill=(r, g, b))
     return img
 
 
 def _header(draw: ImageDraw.ImageDraw, title: str, subtitle: str) -> None:
-    draw.text((60, 52), title, fill="#e2e8f0", font=_font(34, bold=True))
-    draw.text((60, 96), subtitle, fill="#94a3b8", font=_font(18))
+    draw.text((MARGIN, 44), title, fill="#f1f5f9", font=_font(32, bold=True))
+    draw.text((MARGIN, 88), subtitle, fill="#94a3b8", font=_font(17))
 
 
 def _panel(
@@ -60,15 +157,18 @@ def _panel(
     h: int,
     label: str,
     label_color: str,
+    fill: str = "#0f172a",
+    outline: str = "#334155",
 ) -> None:
     draw.rounded_rectangle(
         (x, y, x + w, y + h),
-        radius=16,
-        fill="#111827",
-        outline="#334155",
+        radius=PANEL_RADIUS,
+        fill=fill,
+        outline=outline,
         width=2,
     )
-    draw.text((x + 20, y + 24), label, fill=label_color, font=_font(15, bold=True))
+    label_font = _font(14, bold=True)
+    draw.text((x + TEXT_PAD, y + LABEL_OFFSET_Y), label, fill=label_color, font=label_font)
 
 
 def _badge(
@@ -82,14 +182,29 @@ def _badge(
     color: str,
 ) -> None:
     draw.rounded_rectangle((x, y, x + w, y + 30), radius=15, fill=fill, outline=outline, width=1)
-    bbox = draw.textbbox((0, 0), text, font=_font(13))
-    tw = bbox[2] - bbox[0]
-    draw.text((x + (w - tw) / 2, y + 7), text, fill=color, font=_font(13))
+    tw = _text_width(draw, text, _font(12))
+    draw.text((x + (w - tw) / 2, y + 8), text, fill=color, font=_font(12))
 
 
 def _arrow(draw: ImageDraw.ImageDraw, x1: int, x2: int, y: int, color: str = "#34d399") -> None:
-    draw.line([(x1, y), (x2, y)], fill=color, width=5)
-    draw.polygon([(x2, y), (x2 - 16, y - 10), (x2 - 16, y + 10)], fill=color)
+    draw.line([(x1, y), (x2, y)], fill=color, width=4)
+    draw.polygon([(x2, y), (x2 - 14, y - 9), (x2 - 14, y + 9)], fill=color)
+
+
+def _terminal_bar(draw: ImageDraw.ImageDraw, y: int, command: str) -> None:
+    bar_h = 42
+    draw.rounded_rectangle(
+        (MARGIN, y, WIDTH - MARGIN, y + bar_h),
+        radius=10,
+        fill="#020617",
+        outline="#1e293b",
+        width=1,
+    )
+    draw.ellipse((MARGIN + 14, y + 14, MARGIN + 22, y + 22), fill="#ef4444")
+    draw.ellipse((MARGIN + 28, y + 14, MARGIN + 36, y + 22), fill="#f59e0b")
+    draw.ellipse((MARGIN + 42, y + 14, MARGIN + 50, y + 22), fill="#22c55e")
+    mono = _font(13, mono=True)
+    draw.text((MARGIN + 64, y + 12), command, fill="#94a3b8", font=mono)
 
 
 def frame_hero(progress: float) -> Image.Image:
@@ -107,11 +222,12 @@ def frame_hero(progress: float) -> Image.Image:
         ("Audio", "#f472b6", "Whisper ASR → summarize"),
         ("Video", "#fb923c", "ffmpeg + ASR + keyframes"),
     ]
-    card_w, card_h, gap = 250, 170, 24
+    card_w, card_h, gap = 248, 168, 22
     total_w = len(modalities) * card_w + (len(modalities) - 1) * gap
     start_x = (WIDTH - total_w) // 2
-    card_y = 170
+    card_y = 162
 
+    body_font = _font(14)
     for i, (name, color, desc) in enumerate(modalities):
         x = start_x + i * (card_w + gap)
         alpha = min(1.0, max(0.0, progress * 4 - i))
@@ -120,11 +236,11 @@ def frame_hero(progress: float) -> Image.Image:
         _panel(draw, x, card_y, card_w, card_h, name.upper(), color)
         lines = desc.split(" → ")
         for j, line in enumerate(lines):
-            draw.text((x + 20, card_y + 64 + j * 28), line, fill="#cbd5e1", font=_font(15))
+            draw.text((x + TEXT_PAD, card_y + 58 + j * 26), line, fill="#cbd5e1", font=body_font)
         if i < len(modalities) - 1 and alpha >= 1:
-            _arrow(draw, x + card_w + 6, x + card_w + gap - 6, card_y + card_h // 2, "#64748b")
+            _arrow(draw, x + card_w + 4, x + card_w + gap - 4, card_y + card_h // 2, "#64748b")
 
-    _badge(draw, WIDTH // 2 - 90, 400, 180, "6 MCP tools", "#0f766e", "#14b8a6", "#ecfdf5")
+    _badge(draw, WIDTH // 2 - 88, 392, 176, "6 MCP tools", "#0f766e", "#14b8a6", "#ecfdf5")
     return img
 
 
@@ -137,35 +253,40 @@ def frame_text_summarize(typed_chars: int) -> Image.Image:
         "Extractive baseline · map-reduce · refine strategies",
     )
 
-    panel_y, panel_h = 150, 250
-    input_x, input_w = 60, 500
-    output_x, output_w = 640, 500
-    _panel(draw, input_x, panel_y, input_w, panel_h, "INPUT", "#38bdf8")
-    _panel(draw, output_x, panel_y, output_w, panel_h, "SUMMARY", "#34d399")
+    panel_y, panel_h = 142, 248
+    panel_w = (WIDTH - 2 * MARGIN - PANEL_GAP) // 2
+    input_x = MARGIN
+    output_x = input_x + panel_w + PANEL_GAP
+    body_font = _font(15)
+
+    _panel(draw, input_x, panel_y, panel_w, panel_h, "INPUT", "#38bdf8")
+    _panel(draw, output_x, panel_y, panel_w, panel_h, "SUMMARY", "#34d399")
 
     source = (
         "AI is reshaping healthcare, finance, and transportation. "
         "Machine learning detects disease from medical scans."
     )
     summary = (
-        "AI reshapes healthcare, finance, and transport. ML aids disease detection from imaging."
+        "AI reshapes healthcare, finance, and transport. "
+        "ML aids disease detection from imaging."
     )
     shown = source[:typed_chars]
-    draw.text((input_x + 20, panel_y + 64), shown, fill="#cbd5e1", font=_font(16))
-    if typed_chars >= len(source):
-        draw.text((output_x + 20, panel_y + 64), summary, fill="#f8fafc", font=_font(16))
-        _arrow(draw, input_x + input_w + 12, output_x - 12, panel_y + panel_h // 2)
+    _draw_text_in_box(draw, input_x, panel_y, panel_w, panel_h, shown, body_font, "#cbd5e1")
 
-    draw.text(
-        (60, 430),
-        '$ text-summarizer --text "..." --model extractive',
-        fill="#64748b",
-        font=_font(14),
+    if typed_chars >= len(source):
+        _draw_text_in_box(draw, output_x, panel_y, panel_w, panel_h, summary, body_font, "#f8fafc")
+        arrow_y = panel_y + panel_h // 2
+        _arrow(draw, input_x + panel_w + 10, output_x - 10, arrow_y)
+
+    _terminal_bar(
+        draw,
+        410,
+        '$ text-summarizer summarize "..." model=extractive strategy=map_reduce',
     )
-    _badge(draw, 60, 460, 110, "extractive", "#1e293b", "#475569", "#e2e8f0")
-    _badge(draw, 180, 460, 120, "map_reduce", "#1e293b", "#475569", "#e2e8f0")
-    _badge(draw, 310, 460, 80, "refine", "#1e293b", "#475569", "#e2e8f0")
-    _badge(draw, 900, 460, 150, "POST /summarize", "#0f766e", "#14b8a6", "#ecfdf5")
+    _badge(draw, MARGIN, 462, 108, "extractive", "#1e293b", "#475569", "#e2e8f0")
+    _badge(draw, MARGIN + 118, 462, 118, "map_reduce", "#1e293b", "#475569", "#e2e8f0")
+    _badge(draw, MARGIN + 246, 462, 76, "refine", "#1e293b", "#475569", "#e2e8f0")
+    _badge(draw, WIDTH - MARGIN - 168, 462, 168, "POST /summarize", "#0f766e", "#14b8a6", "#ecfdf5")
     return img
 
 
@@ -186,25 +307,22 @@ def frame_mcp(highlight: int) -> Image.Image:
         "list_models",
         "grade_summary",
     ]
-    panel_y = 150
-    _panel(draw, 60, panel_y, 1080, 280, "MCP TOOLS", "#a78bfa")
+    panel_y = 142
+    panel_w = WIDTH - 2 * MARGIN
+    _panel(draw, MARGIN, panel_y, panel_w, 268, "MCP TOOLS", "#a78bfa")
 
+    badge_w = (panel_w - 80) // 2
     for i, tool in enumerate(tools):
         col, row = i % 2, i // 2
-        x = 90 + col * 520
-        y = panel_y + 70 + row * 52
+        x = MARGIN + 28 + col * (badge_w + 24)
+        y = panel_y + 64 + row * 54
         active = i == highlight
         fill = "#0f766e" if active else "#1e293b"
         outline = "#14b8a6" if active else "#334155"
         color = "#ecfdf5" if active else "#e2e8f0"
-        _badge(draw, x, y, 480, tool, fill, outline, color)
+        _badge(draw, x, y, badge_w, tool, fill, outline, color)
 
-    draw.text(
-        (60, 455),
-        "$ uv run python -m textSummarizer.mcp.server",
-        fill="#64748b",
-        font=_font(14),
-    )
+    _terminal_bar(draw, 430, "$ uv run python -m textSummarizer.mcp.server")
     return img
 
 
@@ -222,22 +340,32 @@ def frame_grading(step: int) -> Image.Image:
         ("2. Grade", "Score 1–5 on rubric dimensions", "#a78bfa"),
         ("3. Refine", "Iterate if score < threshold", "#34d399"),
     ]
-    box_w, gap = 320, 40
+    box_w, gap = 310, 36
     start_x = (WIDTH - (box_w * 3 + gap * 2)) // 2
-    y = 200
+    y = 188
+    body_font = _font(14)
 
     for i, (title, desc, color) in enumerate(steps):
         x = start_x + i * (box_w + gap)
         active = i <= step
-        _panel(draw, x, y, box_w, 140, title, color if active else "#64748b")
-        draw.text((x + 20, y + 64), desc, fill="#cbd5e1" if active else "#64748b", font=_font(15))
+        _panel(draw, x, y, box_w, 136, title, color if active else "#64748b")
+        _draw_text_in_box(
+            draw,
+            x,
+            y + 36,
+            box_w,
+            96,
+            desc,
+            body_font,
+            "#cbd5e1" if active else "#64748b",
+        )
         if i < 2:
             arrow_color = color if i < step else "#334155"
-            _arrow(draw, x + box_w + 8, x + box_w + gap - 8, y + 70, arrow_color)
+            _arrow(draw, x + box_w + 6, x + box_w + gap - 6, y + 68, arrow_color)
 
     scores = ["Coherence 4.2", "Faithfulness 4.0", "Fluency 4.5", "Relevance 4.1"]
     for i, score in enumerate(scores):
-        _badge(draw, 60 + i * 170, 390, 150, score, "#1e293b", "#475569", "#e2e8f0")
+        _badge(draw, MARGIN + i * 168, 382, 150, score, "#1e293b", "#475569", "#e2e8f0")
     return img
 
 

@@ -1,14 +1,10 @@
 {
   "mcpServers": {
     "summarizehub": {
-      "command": "uv",
+      "command": "bash",
       "args": [
-        "run",
-        "--directory",
-        "/Users/abhinaysaikamineni/Projects/nlp-text-summarization",
-        "python",
-        "-m",
-        "textSummarizer.mcp.server"
+        "-c",
+        "cd /path/to/nexus-forge && uv run summarizehub-mcp"
       ]
     }
   }

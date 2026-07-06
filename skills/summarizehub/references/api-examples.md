@@ -6,8 +6,8 @@ Start the server:
 
 ```bash
 cd nexus-forge
-uv sync --extra multimodal
-uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
+uv pip install -e ".[multimodal]"
+uv run uvicorn textSummarizer.serving.app:app -p 8080
 ```
 
 ## Health

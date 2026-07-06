@@ -7,7 +7,7 @@ Thank you for your interest in contributing! This project welcomes improvements 
 ```bash
 git clone https://github.com/askmy-stack/nexus-forge.git
 cd nexus-forge
-uv sync --group dev
+uv sync
 uv run pre-commit install
 ```
 
@@ -18,8 +18,11 @@ uv run ruff check .
 uv run ruff format .
 uv run pytest -m "not gpu and not slow and not network"
 uv run python scripts/run_pipeline.py          # full training pipeline
-uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
-uv run python -m textSummarizer.cli --text "..." --model extractive
+uv run uvicorn textSummarizer.serving.app:app -p 8080
+uv run python -c "
+from textSummarizer.models import ModelFactory
+print(ModelFactory.create('extractive').summarize('Sample text for a quick check.'))
+"
 ```
 
 ## Publishing to PyPI
@@ -31,7 +34,7 @@ uv run python -m textSummarizer.cli --text "..." --model extractive
 ```bash
 ./scripts/publish_pypi.sh          # dry run (build + twine check)
 export PYPI_API_TOKEN=pypi-...     # never commit this token
-./scripts/publish_pypi.sh --upload # manual upload
+./scripts/publish_pypi.sh          # set upload in script or env for manual upload
 ```
 
 4. Or push a version tag to trigger CI publish:
