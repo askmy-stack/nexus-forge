@@ -1,5 +1,6 @@
 import importlib.util
 import json
+from unittest.mock import patch
 
 import pytest
 
@@ -31,6 +32,32 @@ def test_summarize_text_tool():
     data = json.loads(result)
     assert data["summary"]
     assert data["model"] == "extractive"
+
+
+def test_summarize_text_hierarchical_strategy():
+    result = mcp_server.summarize_text(
+        text="AI is changing industries. " * 20,
+        model="extractive",
+        strategy="hierarchical",
+    )
+    data = json.loads(result)
+    assert data["summary"]
+    assert data["strategy"] == "hierarchical"
+
+
+@patch("textSummarizer.pipelines.rag.retrieve_chunks")
+def test_summarize_text_rag_strategy(mock_retrieve):
+    mock_retrieve.return_value = ["Relevant chunk about AI."]
+    text = "word " * 3000
+    result = mcp_server.summarize_text(
+        text=text,
+        model="extractive",
+        strategy="rag",
+    )
+    data = json.loads(result)
+    assert data["summary"]
+    assert data["strategy"] == "rag"
+    mock_retrieve.assert_called_once()
 
 
 def test_list_models_tool():

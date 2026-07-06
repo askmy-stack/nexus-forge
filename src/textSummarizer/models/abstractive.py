@@ -5,7 +5,9 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from textSummarizer.models.base import BaseSummarizer
 from textSummarizer.models.registry import ModelSpec
+from textSummarizer.pipelines.hierarchical import hierarchical_summarize
 from textSummarizer.pipelines.map_reduce import map_reduce_summarize
+from textSummarizer.pipelines.rag import rag_summarize
 from textSummarizer.pipelines.refine import refine_summarize
 from textSummarizer.pipelines.stuff import stuff_summarize
 
@@ -79,6 +81,10 @@ class AbstractiveSummarizer(BaseSummarizer):
             return map_reduce_summarize(text, self, max_length=max_length)
         if strategy == "refine":
             return refine_summarize(text, self, max_length=max_length)
+        if strategy == "hierarchical":
+            return hierarchical_summarize(text, self, max_length=max_length)
+        if strategy == "rag":
+            return rag_summarize(text, self, max_length=max_length)
         return stuff_summarize(text, self, max_length=max_length)
 
 
@@ -98,4 +104,8 @@ class ExtractiveSummarizer(BaseSummarizer):
             return map_reduce_summarize(text, self, max_length=max_length)
         if strategy == "refine":
             return refine_summarize(text, self, max_length=max_length)
+        if strategy == "hierarchical":
+            return hierarchical_summarize(text, self, max_length=max_length)
+        if strategy == "rag":
+            return rag_summarize(text, self, max_length=max_length)
         return _extractive_stuff(text, max_length)

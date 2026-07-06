@@ -9,6 +9,7 @@ class ModelFactory:
         model_name: str,
         model_path: str | None = None,
         tokenizer_path: str | None = None,
+        onnx_dir: str | None = None,
     ) -> BaseSummarizer:
         key = model_name.lower().replace("_", "-")
         if key not in MODEL_REGISTRY:
@@ -18,6 +19,11 @@ class ModelFactory:
         spec = MODEL_REGISTRY[key]
         if spec.model_type == "extractive":
             return ExtractiveSummarizer(spec)
+
+        if onnx_dir:
+            from textSummarizer.models.onnx_summarizer import ONNXSummarizer
+
+            return ONNXSummarizer(model_dir=onnx_dir, spec=spec)
 
         return AbstractiveSummarizer(
             spec=spec,

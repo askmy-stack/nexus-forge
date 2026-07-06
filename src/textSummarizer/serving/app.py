@@ -17,6 +17,7 @@ from textSummarizer.pipeline.stage_02_data_validation import DataValidationTrain
 from textSummarizer.pipeline.stage_03_data_transformation import DataTransformationTrainingPipeline
 from textSummarizer.pipeline.stage_04_model_trainer import ModelTrainerTrainingPipeline
 from textSummarizer.pipeline.stage_05_model_evaluation import ModelEvaluationTrainingPipeline
+from textSummarizer.pipelines import STRATEGY_PATTERN
 
 API_VERSION = "0.1.0"
 MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
@@ -57,8 +58,8 @@ class SummarizeRequest(BaseModel):
     model: str = Field(default="extractive", description="Model name from the registry")
     strategy: str = Field(
         default="stuff",
-        pattern="^(stuff|map_reduce|refine)$",
-        description="Long-document strategy",
+        pattern=STRATEGY_PATTERN,
+        description="Long-document strategy (stuff, map_reduce, refine, hierarchical, rag)",
     )
     max_length: int = Field(default=128, ge=16, le=512, description="Maximum summary length")
 
@@ -91,8 +92,8 @@ class MultimodalJsonRequest(BaseModel):
     model: str = Field(default="extractive", description="Text summarization model")
     strategy: str = Field(
         default="stuff",
-        pattern="^(stuff|map_reduce|refine)$",
-        description="Long-document strategy",
+        pattern=STRATEGY_PATTERN,
+        description="Long-document strategy (stuff, map_reduce, refine, hierarchical, rag)",
     )
     max_length: int = Field(default=128, ge=16, le=512, description="Maximum summary length")
 

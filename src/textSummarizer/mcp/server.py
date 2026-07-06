@@ -23,7 +23,10 @@ def summarize_text(
     strategy: str = "stuff",
     max_length: int = 128,
 ) -> str:
-    """Summarize plain text using extractive or abstractive models."""
+    """Summarize plain text using extractive or abstractive models.
+
+    strategy: stuff | map_reduce | refine | hierarchical | rag
+    """
     summarizer = ModelFactory.create(model)
     summary = summarizer.summarize(text, max_length=max_length, strategy=strategy)
     return json.dumps({"summary": summary, "model": model, "strategy": strategy})

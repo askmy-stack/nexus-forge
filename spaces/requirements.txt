@@ -1,4 +1,7 @@
 gradio>=5.0
+spaces>=0.30
 transformers>=4.46,<6
 torch>=2.5
 sentencepiece
+protobuf>=4.0
+nexus-forge

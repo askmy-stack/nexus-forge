@@ -5,15 +5,14 @@ import sys
 
 from textSummarizer.components.prediction import PredictionPipeline
 from textSummarizer.models import ModelFactory
-
-STRATEGIES = ["stuff", "map_reduce", "refine"]
+from textSummarizer.pipelines import STRATEGIES
 
 
 def _list_models() -> None:
     print("Available models:\n")
     for name, description in sorted(ModelFactory.list_models().items()):
         print(f"  {name:<14} {description}")
-    print("\nStrategies: stuff, map_reduce, refine")
+    print(f"\nStrategies: {', '.join(STRATEGIES)}")
     print("Example:")
     print('  text-summarizer --text "Your article..." --model extractive --strategy map_reduce')
 
