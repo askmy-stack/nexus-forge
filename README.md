@@ -261,7 +261,3 @@ uv run pytest -m "not gpu and not slow and not network"
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
----
-
-Built by [Abhinaysai Kamineni](https://github.com/askmy-stack) · [askmystack.space](https://askmystack.space)
