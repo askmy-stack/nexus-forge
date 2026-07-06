@@ -50,8 +50,8 @@ async def test_multimodal_invalid_type():
         response = await client.post(
             "/summarize/multimodal",
             json={
-                "input_type": "video",
-                "path": "/tmp/video.mp4",
+                "input_type": "pdf",
+                "path": "/tmp/document.pdf",
                 "model": "extractive",
             },
         )

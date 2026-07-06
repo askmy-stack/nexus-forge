@@ -1,6 +1,6 @@
 # SummarizeHub
 
-> **Multimodal Summarization Platform** — summarize text, images, and audio with transformer models, subjective LLM grading, MCP agent integration, and a FastAPI serving layer.
+> **Multimodal Summarization Platform** — summarize text, images, audio, and video with transformer models, subjective LLM grading, MCP agent integration, and a FastAPI serving layer.
 
 [![CI](https://github.com/askmy-stack/nlp-text-summarization/actions/workflows/ci.yml/badge.svg)](https://github.com/askmy-stack/nlp-text-summarization/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -19,7 +19,7 @@
 |----------|--------------|-----------|------------|
 | **Extractive** | Ranks and selects existing sentences | Fast, faithful, no GPU required | Less fluent, limited paraphrasing |
 | **Abstractive** | Generates new summary text | Fluent, concise, paraphrases well | Can hallucinate; needs GPU for speed |
-| **Multimodal** | Caption/transcribe → summarize | Images and audio in one pipeline | Heavier optional deps (BLIP, Whisper) |
+| **Multimodal** | Caption/transcribe → summarize | Images, audio, and video in one pipeline | Heavier optional deps (BLIP, Whisper, ffmpeg) |
 
 This project lets you **compare all approaches** with the same API surface, evaluation suite, grading loop, and agent integration via MCP.
 
@@ -27,11 +27,11 @@ This project lets you **compare all approaches** with the same API surface, eval
 
 ## Features
 
-- **Multimodal inputs** — text, image (BLIP captioning), audio (Whisper ASR), extensible for video
+- **Multimodal inputs** — text, image (BLIP captioning), audio (Whisper ASR), video (ffmpeg + ASR + keyframe captions)
 - **Multi-model registry** — Pegasus, BART, T5, FLAN-T5, LongT5, extractive TextRank-style ranking
 - **Long-document strategies** — stuff, map-reduce, refine with semantic chunking
 - **Subjective grading loop** — coherence, faithfulness, fluency, relevance (1–5 rubric)
-- **MCP server** — `summarize_text`, `summarize_image`, `summarize_audio`, `list_models`, `grade_summary`
+- **MCP server** — `summarize_text`, `summarize_image`, `summarize_audio`, `summarize_video`, `list_models`, `grade_summary`
 - **Cursor skill** — `skills/summarizehub/SKILL.md` for agent integration
 - **FastAPI serving** — `/summarize`, `/summarize/multimodal`, `/grade`, `/models`, `/train`
 - **5-stage MLOps pipeline** — ingest → validate → transform → train → evaluate
@@ -55,6 +55,7 @@ flowchart TB
         ROUTER[Multimodal Router]
         IMG[Image — BLIP Caption]
         AUD[Audio — Whisper ASR]
+        VID[Video — ffmpeg + ASR + BLIP]
         TXT[Text Input]
     end
 
@@ -86,9 +87,11 @@ flowchart TB
     ROUTER --> TXT
     ROUTER --> IMG
     ROUTER --> AUD
+    ROUTER --> VID
     TXT --> REG
     IMG --> REG
     AUD --> REG
+    VID --> REG
     REG --> STRAT
     STRAT --> STUFF
     STRAT --> MR
@@ -112,7 +115,7 @@ flowchart TB
 | **Text** | String, file, base64 | Direct summarization | `extractive` | — |
 | **Image** | Path, upload, base64 | BLIP caption → summarize | `Salesforce/blip-image-captioning-base` | `pillow` |
 | **Audio** | Path, upload, base64 | Whisper ASR → summarize | `openai/whisper-tiny` | `soundfile` |
-| **Video** | — | Planned | — | — |
+| **Video** | Path, upload, base64 | ffmpeg audio + keyframes → Whisper + BLIP → merge → summarize | `openai/whisper-tiny` + BLIP | `ffmpeg` (system), `pillow`, `soundfile` |
 
 ---
 
@@ -179,6 +182,7 @@ uv run python -m textSummarizer.mcp.server
 | `summarize_text` | Summarize plain text |
 | `summarize_image` | Caption image with BLIP, then summarize |
 | `summarize_audio` | Transcribe with Whisper, then summarize |
+| `summarize_video` | Extract audio/keyframes, merge ASR + captions, summarize |
 | `list_models` | List available summarization models |
 | `grade_summary` | Subjective rubric scoring (coherence, faithfulness, fluency, relevance) |
 
@@ -196,7 +200,7 @@ See [skills/summarizehub/SKILL.md](skills/summarizehub/SKILL.md) for agent integ
 | `GET` | `/models` | List registered models |
 | `POST` | `/summarize` | Summarize text |
 | `POST` | `/summarize/multimodal` | Multimodal summarization (JSON + base64) |
-| `POST` | `/summarize/multimodal/upload` | Multimodal file upload (image/audio) |
+| `POST` | `/summarize/multimodal/upload` | Multimodal file upload (image/audio/video) |
 | `POST` | `/grade` | Grade a summary against source |
 | `POST` | `/train` | Run full training pipeline (requires `TRAIN_API_KEY`) |
 | `GET` | `/docs` | OpenAPI interactive docs |
@@ -296,8 +300,12 @@ uv run pytest tests/unit/test_evaluation.py -v
 ## Optional Dependencies
 
 ```bash
-# Image + audio multimodal processing
+# Multimodal (image + audio + video)
 uv sync --extra multimodal
+
+# Video also requires ffmpeg on PATH
+# macOS: brew install ffmpeg
+# Ubuntu: sudo apt install ffmpeg
 
 # MCP server for AI agents
 uv sync --extra mcp
@@ -315,7 +323,7 @@ src/textSummarizer/
 ├── components/     # Pipeline stage implementations
 ├── models/         # Multi-model registry + summarizers
 ├── pipelines/      # Long-doc strategies (map-reduce, refine, chunking)
-├── multimodal/     # Image, audio, router (text/image/audio/video)
+├── multimodal/     # Image, audio, video, router
 ├── grading/        # Rubric, LLM judge, improvement loop
 ├── mcp/            # MCP server for AI agent integration
 ├── evaluation/     # Metric suite (ROUGE, BERTScore, SummaC)
@@ -332,10 +340,9 @@ docs/assets/          # Demo media
 
 ## Roadmap
 
-- [x] Multimodal summarization (text, image, audio)
+- [x] Multimodal summarization (text, image, audio, video)
 - [x] MCP server for AI agent integration
 - [x] Subjective grading loop (G-Eval style rubric)
-- [ ] Video summarization modality
 - [ ] Publish HuggingFace Space with GPU-backed abstractive models
 - [ ] Hierarchical and RAG-based summarization strategies
 - [ ] Model response caching in the API layer
@@ -359,7 +366,7 @@ uv run pytest -m "not gpu and not slow and not network"
 - Python 3.11+, [uv](https://docs.astral.sh/uv/)
 - HuggingFace Transformers, Datasets, Evaluate
 - FastAPI, Pydantic, MCP (Model Context Protocol)
-- BLIP (image captioning), Whisper (ASR)
+- BLIP (image captioning), Whisper (ASR), ffmpeg (video extraction)
 - ruff, pytest, pre-commit, GitHub Actions
 
 ---

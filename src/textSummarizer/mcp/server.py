@@ -70,6 +70,28 @@ def summarize_audio(
 
 
 @mcp.tool()
+def summarize_video(
+    path: str | None = None,
+    base64_data: str | None = None,
+    model: str = "extractive",
+    max_length: int = 128,
+    strategy: str = "map_reduce",
+) -> str:
+    """Extract audio/keyframes from video, merge ASR + BLIP captions, then summarize."""
+    router = MultimodalRouter(text_model=model)
+    result = router.summarize(
+        MultimodalInput(
+            input_type=InputType.VIDEO,
+            path=path,
+            base64_data=base64_data,
+        ),
+        max_length=max_length,
+        strategy=strategy,
+    )
+    return json.dumps(result)
+
+
+@mcp.tool()
 def list_models() -> str:
     """List available summarization models and descriptions."""
     return json.dumps(ModelFactory.list_models())

@@ -50,16 +50,41 @@ class AudioSummarizer:
         raise ValueError("Audio input requires path or bytes")
 
     def transcribe(self, path: str | None = None, data: bytes | None = None) -> str:
+        segments = self.transcribe_segments(path=path, data=data)
+        return " ".join(segment["text"] for segment in segments if segment["text"]).strip()
+
+    def transcribe_segments(
+        self, path: str | None = None, data: bytes | None = None
+    ) -> list[dict[str, float | str]]:
+        """Transcribe audio and return timestamped speech segments."""
         pipe = self._load_pipeline()
         audio_path, tmp = self._resolve_audio_path(path, data)
         try:
-            result = pipe(audio_path)
+            result = pipe(audio_path, return_timestamps=True)
         finally:
             if tmp is not None:
                 tmp.unlink(missing_ok=True)
+
+        segments: list[dict[str, float | str]] = []
         if isinstance(result, dict):
-            return str(result.get("text", "")).strip()
-        return str(result).strip()
+            chunks = result.get("chunks") or []
+            for chunk in chunks:
+                timestamp = chunk.get("timestamp", (0.0, 0.0))
+                start = float(timestamp[0] or 0.0)
+                end = float(timestamp[1] or start)
+                text = str(chunk.get("text", "")).strip()
+                if text:
+                    segments.append({"start": start, "end": end, "text": text})
+            if not segments:
+                text = str(result.get("text", "")).strip()
+                if text:
+                    segments.append({"start": 0.0, "end": 0.0, "text": text})
+            return segments
+
+        text = str(result).strip()
+        if text:
+            return [{"start": 0.0, "end": 0.0, "text": text}]
+        return []
 
     def summarize(
         self,

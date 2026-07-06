@@ -14,8 +14,8 @@ Production-ready multimodal summarization platform at `nlp-text-summarization`. 
 ## When to use
 
 **Use this skill when:**
-- Summarizing text, articles, transcripts, or long documents
-- Summarizing images (caption → summarize) or audio/voice (transcribe → summarize)
+- Summarizing text, articles, transcripts, long documents, or videos
+- Summarizing images (caption → summarize), audio/voice (transcribe → summarize), or video (ASR + keyframes → summarize)
 - Grading summary quality with a subjective rubric
 - Integrating summarization into agents via MCP or REST
 - Choosing models/strategies for extractive vs abstractive trade-offs
@@ -23,7 +23,7 @@ Production-ready multimodal summarization platform at `nlp-text-summarization`. 
 **Do NOT use when:**
 - General NLP unrelated to summarization (NER, translation, sentiment)
 - The user wants a different summarization library (LangChain chains, raw OpenAI API)
-- Video summarization end-to-end (not implemented — extract audio first)
+- Video summarization without ffmpeg installed (install ffmpeg first)
 - Training custom models from scratch without the SummarizeHub pipeline
 
 ## Prerequisites
@@ -33,7 +33,8 @@ Production-ready multimodal summarization platform at `nlp-text-summarization`. 
 | Python 3.11+ | `requires-python = ">=3.11,<3.14"` |
 | [uv](https://docs.astral.sh/uv/) | Package manager |
 | Base install | `uv sync` in repo root |
-| Multimodal (image/audio) | `uv sync --extra multimodal` — adds Pillow, soundfile |
+| Multimodal (image/audio/video) | `uv sync --extra multimodal` — adds Pillow, soundfile |
+| Video extraction | [ffmpeg](https://ffmpeg.org/download.html) on PATH (system dependency) |
 | MCP server | `uv sync --extra mcp` — adds `mcp>=1.0` |
 | Full agent stack | `uv sync --extra multimodal --extra mcp` |
 | GPU (optional) | Speeds abstractive models; `extractive` works CPU-only |
@@ -120,15 +121,21 @@ result = router.summarize(
 
 MCP: `summarize_audio(path="...", model="extractive")` or `base64_data="..."`.
 
-### Video (workaround)
+### Video → ffmpeg → ASR + keyframes → summarize
 
-`InputType.VIDEO` raises `NotImplementedError`. Extract audio first:
+Pipeline: ffmpeg extracts 16 kHz mono audio and up to 20 keyframes (1 fps), Whisper transcribes with timestamps, BLIP captions frames, content is merged into a timestamped document, then `map_reduce` summarizes.
 
-```bash
-ffmpeg -i video.mp4 -vn -acodec pcm_s16le -ar 16000 audio.wav
+```python
+result = router.summarize(
+    MultimodalInput(input_type=InputType.VIDEO, path="/path/to/video.mp4"),
+    strategy="map_reduce",
+)
+# result: {input_type, document, transcript, visual_captions, summary, model, strategy}
 ```
 
-Then summarize via audio workflow or MCP `summarize_audio(path="audio.wav")`.
+MCP: `summarize_video(path="...", model="extractive", strategy="map_reduce")` or `base64_data="..."`.
+
+Requires **ffmpeg** on PATH. Video uploads via REST are limited to 50 MB.
 
 ## MCP integration
 
@@ -163,6 +170,7 @@ All tools return JSON strings. Parse with `json.loads()` before use.
 | `summarize_text` | `text` (required), `model` (default `extractive`), `strategy` (default `stuff`), `max_length` (default `128`) | `{summary, model, strategy}` |
 | `summarize_image` | `path` or `base64_data`, `model`, `max_length` | `{input_type, caption, summary, model, ...}` |
 | `summarize_audio` | `path` or `base64_data`, `model`, `max_length` | `{input_type, transcript, summary, model, ...}` |
+| `summarize_video` | `path` or `base64_data`, `model`, `max_length`, `strategy` (default `map_reduce`) | `{input_type, document, transcript, visual_captions, summary, model, ...}` |
 | `grade_summary` | `source`, `summary`, `threshold` (default `3.5`) | `{score, passes, threshold}` |
 | `list_models` | (none) | `{model_name: description, ...}` |
 
@@ -224,8 +232,8 @@ Base URL: `http://localhost:8080` (default uvicorn port).
 | `GET` | `/health` | Service health |
 | `GET` | `/models` | Model registry |
 | `POST` | `/summarize` | Text summarization |
-| `POST` | `/summarize/multimodal` | JSON multimodal (text/image/audio) |
-| `POST` | `/summarize/multimodal/upload` | Multipart file upload (image/audio) |
+| `POST` | `/summarize/multimodal` | JSON multimodal (text/image/audio/video) |
+| `POST` | `/summarize/multimodal/upload` | Multipart file upload (image/audio/video) |
 | `POST` | `/grade` | Subjective summary grading |
 | `POST` | `/train` | Training pipeline (requires `TRAIN_API_KEY`) |
 
@@ -295,7 +303,8 @@ Gradio demo in `spaces/` — suitable for human-facing UI, not agent automation.
 | MCP server won't start | Missing mcp package | `uv sync --extra mcp` |
 | Slow first request | Model download/load | Expected; models cache in `~/.cache/huggingface` |
 | OOM on GPU | Large abstractive model | Use `extractive` or smaller model (`flan-t5`) |
-| `NotImplementedError` for video | Video not supported | Extract audio with ffmpeg |
+| `NotImplementedError` for video | Old SummarizeHub versions | Upgrade; install ffmpeg on PATH |
+| `ffmpeg is required` | ffmpeg missing | `brew install ffmpeg` or `apt install ffmpeg` |
 | Empty image/audio result | Bad input path or encoding | Verify file exists; use base64 with data-URI prefix support |
 | `422` on `/summarize` | Invalid strategy | Use `stuff`, `map_reduce`, or `refine` |
 
@@ -309,7 +318,7 @@ Verify MCP: `bash scripts/smoke-test.sh REPO_PATH`
 | Load all 7 models at startup | Lazy-load via `ModelFactory`; one model per request |
 | Use abstractive without GPU in production | Default to `extractive`; upgrade when GPU available |
 | Skip grading for user-facing summaries | Run `grade_summary` loop for quality gates |
-| Pass raw video to SummarizeHub | Extract audio first, then `summarize_audio` |
+| Pass raw video without ffmpeg | Install ffmpeg, then `summarize_video` |
 | Hardcode model paths | Use registry names from `list_models` |
 | Ignore `strategy` for long docs | Use `map_reduce` or `longt5` for >1024 tokens |
 

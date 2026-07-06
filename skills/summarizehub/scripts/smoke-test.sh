@@ -27,7 +27,14 @@ except ImportError as exc:
     sys.exit(1)
 
 tools = {t.name for t in mcp_server.mcp._tool_manager.list_tools()}
-expected = {"summarize_text", "summarize_image", "summarize_audio", "list_models", "grade_summary"}
+expected = {
+    "summarize_text",
+    "summarize_image",
+    "summarize_audio",
+    "summarize_video",
+    "list_models",
+    "grade_summary",
+}
 missing = expected - tools
 if missing:
     print(f"FAIL: missing tools: {missing}", file=sys.stderr)
