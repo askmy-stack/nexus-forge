@@ -1,121 +1,70 @@
-# SummarizeHub
+# Nexus Forge (SummarizeHub)
 
-> **Multimodal Summarization Platform** — summarize text, images, audio, and video with transformer models, subjective LLM grading, MCP agent integration, and a FastAPI serving layer.
+> **Multimodal summarization platform** — summarize text, images, audio, and video with transformer models, subjective LLM grading, MCP agent integration, and a FastAPI serving layer.
 
 [![CI](https://github.com/askmy-stack/nexus-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/askmy-stack/nexus-forge/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![v1.0.0](https://img.shields.io/badge/release-v1.0.0-green.svg)](https://github.com/askmy-stack/nexus-forge/releases/tag/v1.0.0)
 [![HuggingFace](https://img.shields.io/badge/🤗-Spaces-yellow)](https://huggingface.co/spaces)
 
-![Demo](docs/assets/demo.png)
+![SummarizeHub Demo](docs/assets/demo.gif)
 
-**SummarizeHub** is a production-ready NLP platform for multimodal summarization. Use it as a library, CLI, REST API, MCP server for AI agents, or [HuggingFace Space](https://huggingface.co/spaces) demo.
-
----
-
-## Why this repo?
-
-| Approach | How it works | Strengths | Trade-offs |
-|----------|--------------|-----------|------------|
-| **Extractive** | Ranks and selects existing sentences | Fast, faithful, no GPU required | Less fluent, limited paraphrasing |
-| **Abstractive** | Generates new summary text | Fluent, concise, paraphrases well | Can hallucinate; needs GPU for speed |
-| **Multimodal** | Caption/transcribe → summarize | Images, audio, and video in one pipeline | Heavier optional deps (BLIP, Whisper, ffmpeg) |
-
-This project lets you **compare all approaches** with the same API surface, evaluation suite, grading loop, and agent integration via MCP.
+**Nexus Forge** (SummarizeHub) is a production-ready NLP platform for multimodal summarization. Use it as a library, CLI, REST API, MCP server for AI agents, or [HuggingFace Space](https://huggingface.co/spaces) demo. One API surface across extractive and abstractive models, with a grading loop for quality-driven refinement.
 
 ---
 
 ## Features
 
-- **Multimodal inputs** — text, image (BLIP captioning), audio (Whisper ASR), video (ffmpeg + ASR + keyframe captions)
+- **Four modalities** — text, image (BLIP captioning), audio (Whisper ASR), video (ffmpeg + ASR + keyframe captions)
 - **Multi-model registry** — Pegasus, BART, T5, FLAN-T5, LongT5, extractive TextRank-style ranking
 - **Long-document strategies** — stuff, map-reduce, refine with semantic chunking
-- **Subjective grading loop** — coherence, faithfulness, fluency, relevance (1–5 rubric)
-- **MCP server** — `summarize_text`, `summarize_image`, `summarize_audio`, `summarize_video`, `list_models`, `grade_summary`
-- **Cursor skill** — `skills/summarizehub/SKILL.md` for agent integration
+- **MCP server** — 6 tools: `summarize_text`, `summarize_image`, `summarize_audio`, `summarize_video`, `list_models`, `grade_summary`
+- **Grading loop** — subjective rubric (coherence, faithfulness, fluency, relevance) with summarize → grade → refine
 - **FastAPI serving** — `/summarize`, `/summarize/multimodal`, `/grade`, `/models`, `/train`
-- **5-stage MLOps pipeline** — ingest → validate → transform → train → evaluate
-- **Contributor-ready** — pytest, ruff, pre-commit, issue templates
+- **5-stage training pipeline** — ingest → validate → transform → train → evaluate
+- **Cursor skill** — `skills/summarizehub/SKILL.md` for agent integration
 
 ---
 
 ## Architecture
 
 ```mermaid
-flowchart TB
-    subgraph Clients
-        CLI[CLI / text-summarizer]
-        API[FastAPI]
-        MCP[MCP Server]
-        HF[Gradio Space]
-        AGENT[AI Agents / Cursor]
+flowchart LR
+    subgraph Input["Multimodal Input"]
+        TXT[Text]
+        IMG[Image]
+        AUD[Audio]
+        VID[Video]
     end
 
-    subgraph Multimodal
-        ROUTER[Multimodal Router]
-        IMG[Image — BLIP Caption]
-        AUD[Audio — Whisper ASR]
-        VID[Video — ffmpeg + ASR + BLIP]
-        TXT[Text Input]
-    end
+    ROUTER[Multimodal Router]
+    REG[Model Registry]
+    SUM[Summarize]
+    GRADE[Grade Rubric]
+    REFINE[Refine Loop]
 
-    subgraph Core
-        REG[Model Registry]
-        STRAT{Strategy}
-        STUFF[Stuff]
-        MR[Map-Reduce]
-        RF[Refine]
-    end
-
-    subgraph Grading
-        JUDGE[LLM Judge / Heuristics]
-        RUBRIC[Rubric 1-5]
-        LOOP[Improvement Loop]
-    end
-
-  subgraph Models
-        EXT[Extractive]
-        ABS[Abstractive Transformers]
-    end
-
-    CLI --> API
-    AGENT --> MCP
-    MCP --> ROUTER
-    HF --> REG
-    API --> ROUTER
-    API --> JUDGE
-    ROUTER --> TXT
-    ROUTER --> IMG
-    ROUTER --> AUD
-    ROUTER --> VID
-    TXT --> REG
-    IMG --> REG
-    AUD --> REG
-    VID --> REG
-    REG --> STRAT
-    STRAT --> STUFF
-    STRAT --> MR
-    STRAT --> RF
-    STUFF --> EXT
-    STUFF --> ABS
-    MR --> EXT
-    MR --> ABS
-    RF --> ABS
-    JUDGE --> RUBRIC
-    RUBRIC --> LOOP
-    LOOP --> REG
+    TXT --> ROUTER
+    IMG --> ROUTER
+    AUD --> ROUTER
+    VID --> ROUTER
+    ROUTER --> REG --> SUM --> GRADE
+    GRADE -->|score < threshold| REFINE --> SUM
+    GRADE -->|pass| OUT[Summary]
 ```
+
+Clients: **CLI** · **FastAPI** · **MCP** · **Gradio Space** · **Cursor agents**
 
 ---
 
 ## Modalities
 
-| Modality | Input | Pipeline | Default Model | Optional Deps |
-|----------|-------|----------|---------------|---------------|
-| **Text** | String, file, base64 | Direct summarization | `extractive` | — |
-| **Image** | Path, upload, base64 | BLIP caption → summarize | `Salesforce/blip-image-captioning-base` | `pillow` |
-| **Audio** | Path, upload, base64 | Whisper ASR → summarize | `openai/whisper-tiny` | `soundfile` |
-| **Video** | Path, upload, base64 | ffmpeg audio + keyframes → Whisper + BLIP → merge → summarize | `openai/whisper-tiny` + BLIP | `ffmpeg` (system), `pillow`, `soundfile` |
+| Modality | Pipeline | Default Model | Optional Deps |
+|----------|----------|---------------|---------------|
+| **Text** | Direct summarization | `extractive` | — |
+| **Image** | BLIP caption → summarize | `Salesforce/blip-image-captioning-base` | `pillow` |
+| **Audio** | Whisper ASR → summarize | `openai/whisper-tiny` | `soundfile` |
+| **Video** | ffmpeg audio + keyframes → Whisper + BLIP → merge | `openai/whisper-tiny` + BLIP | `ffmpeg`, `pillow`, `soundfile` |
 
 ---
 
@@ -126,13 +75,13 @@ git clone https://github.com/askmy-stack/nexus-forge.git
 cd nexus-forge
 uv sync --group dev
 
-# List models
-uv run text-summarizer --list-models
-
-# Summarize text (no GPU — uses extractive model)
+# CLI — summarize text (no GPU, extractive model)
 uv run text-summarizer \
   --text "AI is transforming industries. Machine learning enables automation." \
   --model extractive
+
+# List registered models
+uv run text-summarizer --list-models
 
 # Start API server
 uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
@@ -142,20 +91,11 @@ uv sync --extra mcp
 uv run python -m textSummarizer.mcp.server
 ```
 
-> **Demo asset:** `docs/assets/demo.png` is a static banner. Regenerate with `python scripts/generate_demo_png.py`.
-
 ---
 
-## MCP Server (AI Agent Integration)
+## MCP setup
 
-Install MCP extras and run the stdio server:
-
-```bash
-uv sync --extra mcp
-uv run python -m textSummarizer.mcp.server
-```
-
-### Cursor `mcp.json` configuration
+Add to Cursor `mcp.json`:
 
 ```json
 {
@@ -175,8 +115,6 @@ uv run python -m textSummarizer.mcp.server
 }
 ```
 
-### MCP Tools
-
 | Tool | Description |
 |------|-------------|
 | `summarize_text` | Summarize plain text |
@@ -192,8 +130,6 @@ See [skills/summarizehub/SKILL.md](skills/summarizehub/SKILL.md) for agent integ
 
 ## API
 
-### Endpoints
-
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Service health and model count |
@@ -205,73 +141,26 @@ See [skills/summarizehub/SKILL.md](skills/summarizehub/SKILL.md) for agent integ
 | `POST` | `/train` | Run full training pipeline (requires `TRAIN_API_KEY`) |
 | `GET` | `/docs` | OpenAPI interactive docs |
 
-### Examples
-
-**Text summarization**
-
 ```bash
 curl -X POST http://localhost:8080/summarize \
   -H "Content-Type: application/json" \
-  -d '{
-    "text": "Artificial intelligence is reshaping healthcare. Machine learning detects disease from scans.",
-    "model": "extractive",
-    "strategy": "map_reduce",
-    "max_length": 128
-  }'
-```
-
-**Multimodal (text via JSON)**
-
-```bash
-curl -X POST http://localhost:8080/summarize/multimodal \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input_type": "text",
-    "text": "AI is transforming industries. Machine learning enables automation.",
-    "model": "extractive"
-  }'
-```
-
-**Grade a summary**
-
-```bash
-curl -X POST http://localhost:8080/grade \
-  -H "Content-Type: application/json" \
-  -d '{
-    "source": "AI is reshaping healthcare and finance.",
-    "summary": "AI reshapes healthcare.",
-    "threshold": 3.5
-  }'
+  -d '{"text": "AI is reshaping healthcare.", "model": "extractive", "max_length": 128}'
 ```
 
 ---
 
-## Models
+## Grading loop
 
-| Model | Type | Max tokens | HuggingFace ID | Best for |
-|-------|------|------------|----------------|----------|
-| `extractive` | Extractive | 10K | — (local TextRank-style) | Fast baseline, no GPU |
-| `bart` | Abstractive | 1024 | `facebook/bart-large-cnn` | News articles |
-| `t5` | Abstractive | 512 | `google-t5/t5-base` | Fine-tuning base |
-| `flan-t5` | Abstractive | 512 | `google/flan-t5-base` | Instruction-style prompts |
-| `pegasus` | Abstractive | 1024 | `google/pegasus-cnn_dailymail` | Dialogue / articles |
-| `pegasus-xsum` | Abstractive | 1024 | `google/pegasus-xsum` | Extreme abstractive (XSum) |
-| `longt5` | Abstractive | 16K | `google/long-t5-tglobal-base` | Long documents |
+Subjective scoring for loop engineering — no OpenAI API key required (heuristic judge by default):
 
----
+| Dimension | Scale |
+|-----------|-------|
+| Coherence | 1–5 |
+| Faithfulness | 1–5 |
+| Fluency | 1–5 |
+| Relevance | 1–5 |
 
-## Grading Loop
-
-SummarizeHub includes a subjective grading system for loop engineering:
-
-| Dimension | Description | Scale |
-|-----------|-------------|-------|
-| Coherence | Logical flow and consistency | 1–5 |
-| Faithfulness | Alignment with source facts | 1–5 |
-| Fluency | Grammar and readability | 1–5 |
-| Relevance | Coverage of key points | 1–5 |
-
-The improvement loop: **summarize → grade → refine** (up to 2 iterations if score < threshold). No OpenAI API key required — uses heuristic scoring by default with optional FLAN-T5 refinement.
+**Flow:** summarize → grade → refine (up to 2 iterations if score < threshold).
 
 ```python
 from textSummarizer.grading import SummarizationLoop
@@ -283,35 +172,20 @@ print(result.score.to_dict())
 
 ---
 
-## Evaluation
+## Training pipeline
 
-| Tier | Metrics | When to use |
-|------|---------|-------------|
-| 1 | ROUGE | CI / fast iteration |
-| 2 | ROUGE + BERTScore | Nightly builds |
-| 3 | ROUGE + BERTScore + SummaC | Release candidates |
+Five-stage MLOps pipeline orchestrated via CLI or `POST /train`:
 
-```bash
-uv run pytest tests/unit/test_evaluation.py -v
-```
-
----
-
-## Optional Dependencies
+| Stage | Module | Purpose |
+|-------|--------|---------|
+| 1. Ingest | `stage_01_data_ingestion` | Download and load datasets |
+| 2. Validate | `stage_02_data_validation` | Schema and quality checks |
+| 3. Transform | `stage_03_data_transformation` | Tokenize and split |
+| 4. Train | `stage_04_model_trainer` | Fine-tune summarization models |
+| 5. Evaluate | `stage_05_model_evaluation` | ROUGE / BERTScore metrics |
 
 ```bash
-# Multimodal (image + audio + video)
-uv sync --extra multimodal
-
-# Video also requires ffmpeg on PATH
-# macOS: brew install ffmpeg
-# Ubuntu: sudo apt install ffmpeg
-
-# MCP server for AI agents
-uv sync --extra mcp
-
-# Gradio demo
-uv sync --extra demo
+uv run python scripts/run_pipeline.py
 ```
 
 ---
@@ -332,26 +206,43 @@ src/textSummarizer/
 
 skills/summarizehub/  # Cursor skill for agent integration
 spaces/               # HuggingFace Gradio Space
-scripts/              # demo.py, run_pipeline.py
-docs/assets/          # Demo media
+scripts/              # demo.py, run_pipeline.py, generate_demo_gif.py
+docs/assets/          # Demo GIF and static fallback
 ```
+
+---
+
+## Optional dependencies
+
+```bash
+uv sync --extra multimodal   # image + audio + video
+uv sync --extra mcp            # MCP server
+uv sync --extra demo           # Gradio Space
+uv sync --extra eval           # BERTScore
+```
+
+Video requires **ffmpeg** on `PATH` (`brew install ffmpeg` / `apt install ffmpeg`).
 
 ---
 
 ## Roadmap
 
-- [x] Multimodal summarization (text, image, audio, video)
-- [x] MCP server for AI agent integration
-- [x] Subjective grading loop (G-Eval style rubric)
-- [ ] Publish HuggingFace Space with GPU-backed abstractive models
-- [ ] Hierarchical and RAG-based summarization strategies
-- [ ] Model response caching in the API layer
+| Status | Item |
+|--------|------|
+| ✅ | Multimodal summarization (text, image, audio, video) |
+| ✅ | MCP server + Cursor skill |
+| ✅ | Subjective grading loop |
+| ✅ | 5-stage training pipeline |
+| 🔜 | PyPI publish (`pip install nexus-forge`) |
+| 🔜 | ONNX export for faster inference |
+| 🔜 | HuggingFace Space with GPU-backed abstractive models |
+| 🔜 | Hierarchical and RAG-based summarization strategies |
 
 ---
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and guidelines.
 
 ```bash
 uv run pre-commit install
@@ -359,15 +250,11 @@ uv run ruff check .
 uv run pytest -m "not gpu and not slow and not network"
 ```
 
----
+Regenerate the README demo GIF:
 
-## Stack
-
-- Python 3.11+, [uv](https://docs.astral.sh/uv/)
-- HuggingFace Transformers, Datasets, Evaluate
-- FastAPI, Pydantic, MCP (Model Context Protocol)
-- BLIP (image captioning), Whisper (ASR), ffmpeg (video extraction)
-- ruff, pytest, pre-commit, GitHub Actions
+```bash
+uv run python scripts/generate_demo_gif.py
+```
 
 ---
 
