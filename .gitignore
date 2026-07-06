@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Artifacts & logs
+artifacts/
+logs/
+*.log
+
+# ML
+.dvc/cache/
+.dvc/tmp/
+wandb/
+mlruns/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model weights (use HF Hub or DVC)
+*.bin
+*.safetensors

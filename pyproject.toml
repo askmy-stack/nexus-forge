@@ -1,0 +1,71 @@
+[project]
+name = "text-summarizer"
+version = "0.1.0"
+description = "Extractive and abstractive text summarization using transformer models"
+authors = [{ name = "Abhinaysai Kamineni", email = "askmy-stack@users.noreply.github.com" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "transformers>=4.46,<6",
+  "torch>=2.5",
+  "datasets>=3.0",
+  "accelerate>=1.0",
+  "evaluate>=0.4.6",
+  "rouge-score>=0.1.2",
+  "python-box>=7.0",
+  "PyYAML>=6.0",
+  "pandas>=2.0",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.0",
+  "pydantic-settings>=2.0",
+  "tqdm>=4.0",
+  "numpy>=1.26",
+  "scikit-learn>=1.5",
+]
+
+[project.optional-dependencies]
+eval = ["bert-score>=0.3.13"]
+demo = ["gradio>=5.0"]
+mlops = ["mlflow>=2.19", "wandb>=0.19", "dvc>=3.0"]
+
+[dependency-groups]
+dev = [
+  { include-group = "test" },
+  { include-group = "lint" },
+  "pre-commit>=4.0",
+  "httpx>=0.27",
+]
+test = ["pytest>=8.0", "pytest-cov>=6.0", "pytest-asyncio>=0.24"]
+lint = ["ruff>=0.11"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/textSummarizer"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+markers = [
+  "gpu: tests requiring GPU",
+  "slow: slow integration tests",
+  "network: tests requiring network access",
+]
+
+[tool.coverage.run]
+source = ["textSummarizer"]
+omit = ["tests/*"]
