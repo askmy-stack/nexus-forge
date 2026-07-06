@@ -30,6 +30,9 @@ eval = ["bert-score>=0.3.13"]
 demo = ["gradio>=5.0"]
 mlops = ["mlflow>=2.19", "wandb>=0.19", "dvc>=3.0"]
 
+[project.scripts]
+text-summarizer = "textSummarizer.cli:main"
+
 [dependency-groups]
 dev = [
   { include-group = "test" },

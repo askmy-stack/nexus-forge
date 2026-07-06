@@ -5,12 +5,14 @@ from textSummarizer.pipeline.stage_01_data_ingestion import DataIngestionTrainin
 from textSummarizer.pipeline.stage_02_data_validation import DataValidationTrainingPipeline
 from textSummarizer.pipeline.stage_03_data_transformation import DataTransformationTrainingPipeline
 from textSummarizer.pipeline.stage_04_model_trainer import ModelTrainerTrainingPipeline
+from textSummarizer.pipeline.stage_05_model_evaluation import ModelEvaluationTrainingPipeline
 
 STAGES = [
     ("Data Ingestion", DataIngestionTrainingPipeline),
     ("Data Validation", DataValidationTrainingPipeline),
     ("Data Transformation", DataTransformationTrainingPipeline),
     ("Model Trainer", ModelTrainerTrainingPipeline),
+    ("Model Evaluation", ModelEvaluationTrainingPipeline),
 ]
 
 
