@@ -1,0 +1,17 @@
+name: Model Request
+description: Request support for a new summarization model
+labels: [model]
+body:
+  - type: input
+    id: model_name
+    attributes:
+      label: Model name / HuggingFace ID
+      placeholder: facebook/bart-large-cnn
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why add this model?
+    validations:
+      required: true
