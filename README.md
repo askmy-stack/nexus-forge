@@ -1,6 +1,6 @@
 # SummarizeHub
 
-> **Production-ready text summarization** — compare extractive and abstractive transformer models with long-document pipelines, evaluation metrics, and a FastAPI serving layer.
+> **Multimodal Summarization Platform** — summarize text, images, and audio with transformer models, subjective LLM grading, MCP agent integration, and a FastAPI serving layer.
 
 [![CI](https://github.com/askmy-stack/nlp-text-summarization/actions/workflows/ci.yml/badge.svg)](https://github.com/askmy-stack/nlp-text-summarization/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -9,7 +9,7 @@
 
 ![Demo](docs/assets/demo.png)
 
-**SummarizeHub** is a modernized NLP platform for single-pass and long-document summarization. Use it as a library, CLI, REST API, or [HuggingFace Space](https://huggingface.co/spaces) demo.
+**SummarizeHub** is a production-ready NLP platform for multimodal summarization. Use it as a library, CLI, REST API, MCP server for AI agents, or [HuggingFace Space](https://huggingface.co/spaces) demo.
 
 ---
 
@@ -19,18 +19,22 @@
 |----------|--------------|-----------|------------|
 | **Extractive** | Ranks and selects existing sentences | Fast, faithful, no GPU required | Less fluent, limited paraphrasing |
 | **Abstractive** | Generates new summary text | Fluent, concise, paraphrases well | Can hallucinate; needs GPU for speed |
+| **Multimodal** | Caption/transcribe → summarize | Images and audio in one pipeline | Heavier optional deps (BLIP, Whisper) |
 
-This project lets you **compare both** with the same API surface, evaluation suite, and long-document strategies (`stuff`, `map_reduce`, `refine`).
+This project lets you **compare all approaches** with the same API surface, evaluation suite, grading loop, and agent integration via MCP.
 
 ---
 
 ## Features
 
+- **Multimodal inputs** — text, image (BLIP captioning), audio (Whisper ASR), extensible for video
 - **Multi-model registry** — Pegasus, BART, T5, FLAN-T5, LongT5, extractive TextRank-style ranking
 - **Long-document strategies** — stuff, map-reduce, refine with semantic chunking
+- **Subjective grading loop** — coherence, faithfulness, fluency, relevance (1–5 rubric)
+- **MCP server** — `summarize_text`, `summarize_image`, `summarize_audio`, `list_models`, `grade_summary`
+- **Cursor skill** — `skills/summarizehub/SKILL.md` for agent integration
+- **FastAPI serving** — `/summarize`, `/summarize/multimodal`, `/grade`, `/models`, `/train`
 - **5-stage MLOps pipeline** — ingest → validate → transform → train → evaluate
-- **FastAPI serving** — `/health`, `/summarize`, `/models`, `/train`
-- **Gradio demo** — HuggingFace Spaces ready (`spaces/`)
 - **Contributor-ready** — pytest, ruff, pre-commit, issue templates
 
 ---
@@ -41,36 +45,74 @@ This project lets you **compare both** with the same API surface, evaluation sui
 flowchart TB
     subgraph Clients
         CLI[CLI / text-summarizer]
-        API[FastAPI /summarize]
+        API[FastAPI]
+        MCP[MCP Server]
         HF[Gradio Space]
+        AGENT[AI Agents / Cursor]
+    end
+
+    subgraph Multimodal
+        ROUTER[Multimodal Router]
+        IMG[Image — BLIP Caption]
+        AUD[Audio — Whisper ASR]
+        TXT[Text Input]
     end
 
     subgraph Core
         REG[Model Registry]
         STRAT{Strategy}
-        STUFF[Stuff — single pass]
-        MR[Map-Reduce — chunk & merge]
-        RF[Refine — iterative]
+        STUFF[Stuff]
+        MR[Map-Reduce]
+        RF[Refine]
     end
 
-    subgraph Models
+    subgraph Grading
+        JUDGE[LLM Judge / Heuristics]
+        RUBRIC[Rubric 1-5]
+        LOOP[Improvement Loop]
+    end
+
+  subgraph Models
         EXT[Extractive]
         ABS[Abstractive Transformers]
     end
 
     CLI --> API
+    AGENT --> MCP
+    MCP --> ROUTER
     HF --> REG
-    API --> REG
+    API --> ROUTER
+    API --> JUDGE
+    ROUTER --> TXT
+    ROUTER --> IMG
+    ROUTER --> AUD
+    TXT --> REG
+    IMG --> REG
+    AUD --> REG
     REG --> STRAT
-    STRAT -->|stuff| STUFF
-    STRAT -->|map_reduce| MR
-    STRAT -->|refine| RF
+    STRAT --> STUFF
+    STRAT --> MR
+    STRAT --> RF
     STUFF --> EXT
     STUFF --> ABS
     MR --> EXT
     MR --> ABS
     RF --> ABS
+    JUDGE --> RUBRIC
+    RUBRIC --> LOOP
+    LOOP --> REG
 ```
+
+---
+
+## Modalities
+
+| Modality | Input | Pipeline | Default Model | Optional Deps |
+|----------|-------|----------|---------------|---------------|
+| **Text** | String, file, base64 | Direct summarization | `extractive` | — |
+| **Image** | Path, upload, base64 | BLIP caption → summarize | `Salesforce/blip-image-captioning-base` | `pillow` |
+| **Audio** | Path, upload, base64 | Whisper ASR → summarize | `openai/whisper-tiny` | `soundfile` |
+| **Video** | — | Planned | — | — |
 
 ---
 
@@ -84,19 +126,119 @@ uv sync --group dev
 # List models
 uv run text-summarizer --list-models
 
-# Summarize (no GPU — uses extractive model)
+# Summarize text (no GPU — uses extractive model)
 uv run text-summarizer \
   --text "AI is transforming industries. Machine learning enables automation." \
   --model extractive
 
-# Interactive demo script
-uv run python scripts/demo.py
-
 # Start API server
 uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
+
+# Start MCP server (for AI agents)
+uv sync --extra mcp
+uv run python -m textSummarizer.mcp.server
 ```
 
-> **Demo asset:** `docs/assets/demo.png` is a static banner (GitHub blocks SVG in README). Regenerate with `python scripts/generate_demo_png.py`, or record a GIF via `bash docs/assets/record-demo.sh`.
+> **Demo asset:** `docs/assets/demo.png` is a static banner. Regenerate with `python scripts/generate_demo_png.py`.
+
+---
+
+## MCP Server (AI Agent Integration)
+
+Install MCP extras and run the stdio server:
+
+```bash
+uv sync --extra mcp
+uv run python -m textSummarizer.mcp.server
+```
+
+### Cursor `mcp.json` configuration
+
+```json
+{
+  "mcpServers": {
+    "summarizehub": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/path/to/nlp-text-summarization",
+        "python",
+        "-m",
+        "textSummarizer.mcp.server"
+      ]
+    }
+  }
+}
+```
+
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `summarize_text` | Summarize plain text |
+| `summarize_image` | Caption image with BLIP, then summarize |
+| `summarize_audio` | Transcribe with Whisper, then summarize |
+| `list_models` | List available summarization models |
+| `grade_summary` | Subjective rubric scoring (coherence, faithfulness, fluency, relevance) |
+
+See [skills/summarizehub/SKILL.md](skills/summarizehub/SKILL.md) for agent integration guidance.
+
+---
+
+## API
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Service health and model count |
+| `GET` | `/models` | List registered models |
+| `POST` | `/summarize` | Summarize text |
+| `POST` | `/summarize/multimodal` | Multimodal summarization (JSON + base64) |
+| `POST` | `/summarize/multimodal/upload` | Multimodal file upload (image/audio) |
+| `POST` | `/grade` | Grade a summary against source |
+| `POST` | `/train` | Run full training pipeline (requires `TRAIN_API_KEY`) |
+| `GET` | `/docs` | OpenAPI interactive docs |
+
+### Examples
+
+**Text summarization**
+
+```bash
+curl -X POST http://localhost:8080/summarize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Artificial intelligence is reshaping healthcare. Machine learning detects disease from scans.",
+    "model": "extractive",
+    "strategy": "map_reduce",
+    "max_length": 128
+  }'
+```
+
+**Multimodal (text via JSON)**
+
+```bash
+curl -X POST http://localhost:8080/summarize/multimodal \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_type": "text",
+    "text": "AI is transforming industries. Machine learning enables automation.",
+    "model": "extractive"
+  }'
+```
+
+**Grade a summary**
+
+```bash
+curl -X POST http://localhost:8080/grade \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "AI is reshaping healthcare and finance.",
+    "summary": "AI reshapes healthcare.",
+    "threshold": 3.5
+  }'
+```
 
 ---
 
@@ -114,61 +256,25 @@ uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
 
 ---
 
-## API
+## Grading Loop
 
-### Endpoints
+SummarizeHub includes a subjective grading system for loop engineering:
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Service health and model count |
-| `GET` | `/models` | List registered models |
-| `POST` | `/summarize` | Summarize text |
-| `POST` | `/train` | Run full training pipeline (requires `TRAIN_API_KEY`) |
-| `GET` | `/docs` | OpenAPI interactive docs |
+| Dimension | Description | Scale |
+|-----------|-------------|-------|
+| Coherence | Logical flow and consistency | 1–5 |
+| Faithfulness | Alignment with source facts | 1–5 |
+| Fluency | Grammar and readability | 1–5 |
+| Relevance | Coverage of key points | 1–5 |
 
-### Examples
+The improvement loop: **summarize → grade → refine** (up to 2 iterations if score < threshold). No OpenAI API key required — uses heuristic scoring by default with optional FLAN-T5 refinement.
 
-**Health check**
+```python
+from textSummarizer.grading import SummarizationLoop
 
-```bash
-curl http://localhost:8080/health
-```
-
-```json
-{
-  "status": "ok",
-  "version": "0.1.0",
-  "models_available": 7
-}
-```
-
-**Summarize**
-
-```bash
-curl -X POST http://localhost:8080/summarize \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Artificial intelligence is reshaping healthcare. Machine learning detects disease from scans.",
-    "model": "extractive",
-    "strategy": "map_reduce",
-    "max_length": 128
-  }'
-```
-
-```json
-{
-  "summary": "Artificial intelligence is reshaping healthcare. Machine learning detects disease from scans.",
-  "model": "extractive",
-  "strategy": "map_reduce"
-}
-```
-
-**Invalid model** returns `422` with a helpful message:
-
-```json
-{
-  "detail": "Unknown model 'gpt-4'. Available: bart, extractive, flan-t5, longt5, pegasus, pegasus-xsum, t5"
-}
+loop = SummarizationLoop(model="extractive", max_iterations=2)
+result = loop.run("Long source text here...", max_length=128)
+print(result.score.to_dict())
 ```
 
 ---
@@ -187,17 +293,18 @@ uv run pytest tests/unit/test_evaluation.py -v
 
 ---
 
-## Training pipeline
+## Optional Dependencies
 
 ```bash
-# Full 5-stage pipeline (GPU recommended for training)
-uv run python scripts/run_pipeline.py
+# Image + audio multimodal processing
+uv sync --extra multimodal
 
-# Or with DVC
-dvc repro
+# MCP server for AI agents
+uv sync --extra mcp
+
+# Gradio demo
+uv sync --extra demo
 ```
-
-See [docs/MODEL_CARD.md](docs/MODEL_CARD.md) for the fine-tuned Pegasus model card.
 
 ---
 
@@ -208,37 +315,36 @@ src/textSummarizer/
 ├── components/     # Pipeline stage implementations
 ├── models/         # Multi-model registry + summarizers
 ├── pipelines/      # Long-doc strategies (map-reduce, refine, chunking)
+├── multimodal/     # Image, audio, router (text/image/audio/video)
+├── grading/        # Rubric, LLM judge, improvement loop
+├── mcp/            # MCP server for AI agent integration
 ├── evaluation/     # Metric suite (ROUGE, BERTScore, SummaC)
 ├── serving/        # FastAPI app
 └── pipeline/       # Stage orchestrators
 
-spaces/             # HuggingFace Gradio Space
-scripts/            # demo.py, run_pipeline.py
-docs/assets/        # Demo media and recording script
+skills/summarizehub/  # Cursor skill for agent integration
+spaces/               # HuggingFace Gradio Space
+scripts/              # demo.py, run_pipeline.py
+docs/assets/          # Demo media
 ```
 
 ---
 
 ## Roadmap
 
+- [x] Multimodal summarization (text, image, audio)
+- [x] MCP server for AI agent integration
+- [x] Subjective grading loop (G-Eval style rubric)
+- [ ] Video summarization modality
 - [ ] Publish HuggingFace Space with GPU-backed abstractive models
-- [ ] Add CNN/DailyMail, XSum, and BillSum dataset loaders
 - [ ] Hierarchical and RAG-based summarization strategies
 - [ ] Model response caching in the API layer
-- [ ] G-Eval and human-eval benchmark notebooks
 
 ---
 
 ## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and guidelines.
-
-**Good first issues:**
-
-- Add a new model to `models/registry.py`
-- Add evaluation metrics in `evaluation/metrics.py`
-- Improve chunking heuristics for domain-specific text
-- Expand API integration tests
 
 ```bash
 uv run pre-commit install
@@ -252,9 +358,9 @@ uv run pytest -m "not gpu and not slow and not network"
 
 - Python 3.11+, [uv](https://docs.astral.sh/uv/)
 - HuggingFace Transformers, Datasets, Evaluate
-- FastAPI, Pydantic, Gradio
+- FastAPI, Pydantic, MCP (Model Context Protocol)
+- BLIP (image captioning), Whisper (ASR)
 - ruff, pytest, pre-commit, GitHub Actions
-- DVC, MLflow/W&B (optional)
 
 ---
 
