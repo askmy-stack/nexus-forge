@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" role="img" aria-label="Text summarization demo animation">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e3a5f"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="960" height="420" rx="18" fill="url(#bg)"/>
+
+  <text x="48" y="52" fill="#e2e8f0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="700">
+    SummarizeHub  Live Demo
+  </text>
+  <text x="48" y="82" fill="#94a3b8" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15">
+    Extractive &amp; abstractive summarization in one API
+  </text>
+
+  <!-- Input panel -->
+  <g filter="url(#shadow)">
+    <rect x="48" y="110" width="400" height="250" rx="14" fill="#111827" stroke="#334155"/>
+    <text x="68" y="140" fill="#38bdf8" font-family="ui-monospace, monospace" font-size="13">INPUT</text>
+    <text x="68" y="175" fill="#cbd5e1" font-family="ui-monospace, monospace" font-size="14">
+      <tspan x="68" dy="0">AI is reshaping healthcare,</tspan>
+      <tspan x="68" dy="24">finance, and transportation.</tspan>
+      <tspan x="68" dy="24">Machine learning detects</tspan>
+      <tspan x="68" dy="24">disease from medical scans...</tspan>
+    </text>
+  </g>
+
+  <!-- Animated arrow -->
+  <g>
+    <path d="M470 235 H520" stroke="url(#accent)" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="520,235 508,228 508,242" fill="#34d399">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" repeatCount="indefinite"/>
+    </polygon>
+    <circle cx="495" cy="235" r="5" fill="#38bdf8">
+      <animate attributeName="cx" values="472;508;472" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Output panel -->
+  <g filter="url(#shadow)">
+    <rect x="540" y="110" width="372" height="250" rx="14" fill="#111827" stroke="#334155"/>
+    <text x="560" y="140" fill="#34d399" font-family="ui-monospace, monospace" font-size="13">SUMMARY</text>
+    <text x="560" y="175" fill="#f8fafc" font-family="ui-monospace, monospace" font-size="14">
+      <tspan x="560" dy="0">AI reshapes healthcare,</tspan>
+      <tspan x="560" dy="24">finance, and transport.</tspan>
+      <tspan x="560" dy="24">ML aids disease detection</tspan>
+      <tspan x="560" dy="24">from medical imaging.</tspan>
+    </text>
+  </g>
+
+  <!-- Strategy badges -->
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">
+    <rect x="48" y="378" width="72" height="26" rx="13" fill="#1e293b" stroke="#475569"/>
+    <text x="84" y="395" fill="#e2e8f0" text-anchor="middle">extractive</text>
+
+    <rect x="132" y="378" width="88" height="26" rx="13" fill="#1e293b" stroke="#475569"/>
+    <text x="176" y="395" fill="#e2e8f0" text-anchor="middle">map_reduce</text>
+
+    <rect x="232" y="378" width="56" height="26" rx="13" fill="#1e293b" stroke="#475569"/>
+    <text x="260" y="395" fill="#e2e8f0" text-anchor="middle">refine</text>
+
+    <rect x="540" y="378" width="120" height="26" rx="13" fill="#0f766e" stroke="#14b8a6"/>
+    <text x="600" y="395" fill="#ecfdf5" text-anchor="middle">POST /summarize</text>
+  </g>
+
+  <text x="792" y="395" fill="#64748b" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" text-anchor="end">
+  Replace with screen recording ’ docs/assets/demo.gif
+  </text>
+</svg>
