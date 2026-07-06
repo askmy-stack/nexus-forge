@@ -1,11 +1,11 @@
 ---
 name: summarizehub
-description: Multimodal summarization via SummarizeHub MCP tools — text, image, and audio inputs with subjective grading. Use when summarizing documents, images, voice recordings, or evaluating summary quality.
+description: Multimodal summarization via SummarizeHub MCP tools — text, image, and audio inputs with subjective grading. Use when summarizing documents, images, voice recordings, evaluating summary quality, or configuring the SummarizeHub MCP server.
 ---
 
 # SummarizeHub
 
-SummarizeHub is a multimodal summarization platform exposed as an MCP server and REST API. Use this skill when the user wants to summarize text, images, or audio, list available models, or grade summary quality.
+SummarizeHub is a multimodal summarization platform exposed as an MCP server and REST API.
 
 ## When to Use
 
@@ -18,43 +18,15 @@ SummarizeHub is a multimodal summarization platform exposed as an MCP server and
 
 ## MCP Server Setup
 
-Install with MCP extras:
-
 ```bash
+cd /path/to/nlp-text-summarization
 uv sync --extra mcp
-```
-
-Run the stdio server:
-
-```bash
-uv run python -m textSummarizer.mcp.server
-```
-
-Or use the CLI entry point:
-
-```bash
 uv run summarizehub-mcp
 ```
 
-### Cursor `mcp.json` Example
+### Cursor `mcp.json`
 
-```json
-{
-  "mcpServers": {
-    "summarizehub": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "/path/to/nlp-text-summarization",
-        "python",
-        "-m",
-        "textSummarizer.mcp.server"
-      ]
-    }
-  }
-}
-```
+Copy from [references/mcp-config.json](references/mcp-config.json) and replace the `--directory` path.
 
 ## Available MCP Tools
 
@@ -75,9 +47,7 @@ uv run summarizehub-mcp
 | Audio | Whisper ASR → text summary | `openai/whisper-tiny` |
 | Video | Not yet implemented | — |
 
-## REST API Alternative
-
-If MCP is unavailable, use the FastAPI server:
+## REST API Reference
 
 ```bash
 uv run uvicorn textSummarizer.serving.app:app --port 8080
@@ -90,27 +60,55 @@ uv run uvicorn textSummarizer.serving.app:app --port 8080
 | `/summarize/multimodal/upload` | POST | File upload (image/audio) |
 | `/grade` | POST | Subjective grading |
 | `/models` | GET | List models |
+| `/health` | GET | Service health |
 
-## Agent Integration Patterns
+## Multimodal Workflows
 
-1. **Text-first**: Call `summarize_text` with `model=extractive` for fast results; use `bart` or `flan-t5` when fluency matters.
-2. **Image workflow**: Provide `base64_data` or a local `path` to `summarize_image`; returns caption + summary.
-3. **Voice workflow**: Provide audio via `summarize_audio`; returns transcript + summary.
-4. **Quality loop**: After summarizing, call `grade_summary`; if `passes` is false, retry with a different model or strategy.
+### Text-first
+
+1. Call `list_models` to confirm availability.
+2. Call `summarize_text` with `model=extractive` for fast CPU results.
+3. Use `bart` or `flan-t5` when fluency matters (GPU recommended).
+
+### Image workflow
+
+1. Provide `base64_data` or local `path` to `summarize_image`.
+2. Response includes `caption` (BLIP output) and `summary`.
+3. Call `grade_summary` with caption as source if validating faithfulness.
+
+### Audio workflow
+
+1. Provide audio via `summarize_audio` (`path` or `base64_data`).
+2. Response includes `transcript` (Whisper output) and `summary`.
+3. Grade against transcript or original source text.
+
+### Grading loop
+
+1. Summarize with any modality tool.
+2. Call `grade_summary` with `source` and `summary`.
+3. If `passes` is false, retry with different `model`, `strategy`, or higher `max_length`.
+4. For programmatic loops, use `SummarizationLoop` from `textSummarizer.grading`.
 
 ## Optional Dependencies
 
 ```bash
-# Image + audio processing
-uv sync --extra multimodal
-
-# MCP server
-uv sync --extra mcp
+uv sync --extra multimodal   # Pillow + soundfile for image/audio
+uv sync --extra mcp          # MCP server
 ```
+
+## Anti-Patterns
+
+- **Do not** call `summarize_image` or `summarize_audio` without `uv sync --extra multimodal` — BLIP/Whisper need Pillow/soundfile.
+- **Do not** use `video` input_type — returns 422; extract audio frames first.
+- **Do not** assume GPU is available — default to `extractive` for CI and agent workflows.
+- **Do not** require OpenAI API keys — grading uses local heuristics by default.
+- **Do not** pass remote URLs as `path` — MCP tools expect local filesystem paths or `base64_data`.
+- **Do not** skip `grade_summary` when quality matters — abstractive models can hallucinate.
+- **Do not** use `map_reduce` for short text (<512 tokens) — `stuff` is faster and equivalent.
 
 ## Defaults and Constraints
 
-- **No GPU required** for default path (`extractive` model)
-- **No OpenAI API key** required — uses local heuristics for grading
-- Models are **lazy-loaded** on first use
-- Keep `extractive` as the default for speed and CI compatibility
+- Models are lazy-loaded on first use.
+- `extractive` is the default for speed and CI compatibility.
+- Grading threshold default is 3.5 (scale 1–5).
+- Max summary length: 16–512 tokens via API.

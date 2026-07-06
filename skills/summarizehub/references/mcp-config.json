@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "summarizehub": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/path/to/nlp-text-summarization",
+        "python",
+        "-m",
+        "textSummarizer.mcp.server"
+      ]
+    }
+  }
+}
