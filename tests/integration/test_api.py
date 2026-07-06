@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -59,6 +61,38 @@ async def test_summarize_extractive_map_reduce():
         )
     assert response.status_code == 200
     assert response.json()["summary"]
+
+
+@pytest.mark.asyncio
+async def test_summarize_multimodal_video_json():
+    transport = ASGITransport(app=app)
+    with patch("textSummarizer.multimodal.router.VideoSummarizer.summarize") as mock_summarize:
+        mock_summarize.return_value = {
+            "document": "[0000.0s] Speech: Demo transcript.",
+            "transcript": "Demo transcript.",
+            "visual_captions": "A presenter.",
+            "summary": "A short demo video.",
+            "model": "extractive",
+            "segments": [],
+            "frame_captions": [],
+        }
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/summarize/multimodal",
+                json={
+                    "input_type": "video",
+                    "path": "/tmp/demo.mp4",
+                    "model": "extractive",
+                    "strategy": "map_reduce",
+                    "max_length": 64,
+                },
+            )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["input_type"] == "video"
+    assert data["summary"] == "A short demo video."
+    assert data["document"]
+    assert data["transcript"] == "Demo transcript."
 
 
 @pytest.mark.asyncio

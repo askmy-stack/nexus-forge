@@ -1,8 +1,6 @@
 import base64
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from textSummarizer.multimodal.audio import AudioSummarizer
 from textSummarizer.multimodal.base import InputType, MultimodalInput
 from textSummarizer.multimodal.image import ImageSummarizer
@@ -54,7 +52,7 @@ def test_audio_summarizer_mock(mock_resolve_path, mock_load_pipeline):
 
     assert result["transcript"] == "Hello from audio."
     assert result["summary"]
-    mock_pipe.assert_called_once_with("/tmp/fake.wav")
+    mock_pipe.assert_called_once_with("/tmp/fake.wav", return_timestamps=True)
 
 
 def test_router_text():
@@ -82,9 +80,3 @@ def test_router_image(mock_summarize):
     )
     assert result["caption"] == "A diagram."
     assert result["summary"] == "Diagram summary."
-
-
-def test_router_video_not_implemented():
-    router = MultimodalRouter()
-    with pytest.raises(NotImplementedError):
-        router.summarize(MultimodalInput(input_type=InputType.VIDEO, path="/tmp/video.mp4"))

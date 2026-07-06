@@ -2,6 +2,7 @@ from textSummarizer.models import ModelFactory
 from textSummarizer.multimodal.audio import AudioSummarizer
 from textSummarizer.multimodal.base import InputType, MultimodalInput
 from textSummarizer.multimodal.image import ImageSummarizer
+from textSummarizer.multimodal.video import FFmpegNotFoundError, VideoSummarizer
 
 
 class MultimodalRouter:
@@ -16,10 +17,13 @@ class MultimodalRouter:
         self.text_model = text_model
         self._image = ImageSummarizer(text_model=text_model)
         self._audio = AudioSummarizer(text_model=text_model)
+        self._video = VideoSummarizer(text_model=text_model)
         if image_caption_model:
             self._image.caption_model = image_caption_model
+            self._video._image.caption_model = image_caption_model
         if whisper_model:
             self._audio.whisper_model = whisper_model
+            self._video._audio.whisper_model = whisper_model
 
     def summarize(
         self,
@@ -73,9 +77,24 @@ class MultimodalRouter:
             }
 
         if input.input_type == InputType.VIDEO:
-            raise NotImplementedError(
-                "Video summarization is not yet implemented. "
-                "Extract audio frames or provide audio/image inputs."
-            )
+            data = input.resolve_bytes()
+            try:
+                result = self._video.summarize(
+                    path=input.path,
+                    data=data,
+                    max_length=max_length,
+                    strategy=strategy,
+                )
+            except FFmpegNotFoundError as exc:
+                raise ValueError(str(exc)) from exc
+            return {
+                "input_type": input.input_type.value,
+                "document": result["document"],
+                "transcript": result["transcript"],
+                "visual_captions": result["visual_captions"],
+                "summary": result["summary"],
+                "model": result["model"],
+                "strategy": strategy,
+            }
 
         raise ValueError(f"Unsupported input type: {input.input_type}")

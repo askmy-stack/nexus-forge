@@ -16,6 +16,7 @@ def test_mcp_tools_registered():
         "summarize_text",
         "summarize_image",
         "summarize_audio",
+        "summarize_video",
         "list_models",
         "grade_summary",
     }
@@ -51,7 +52,14 @@ def test_grade_summary_tool():
 
 @pytest.mark.parametrize(
     "tool_name",
-    ["summarize_text", "summarize_image", "summarize_audio", "list_models", "grade_summary"],
+    [
+        "summarize_text",
+        "summarize_image",
+        "summarize_audio",
+        "summarize_video",
+        "list_models",
+        "grade_summary",
+    ],
 )
 def test_mcp_package_entrypoint(tool_name):
     assert importlib.util.find_spec("textSummarizer.mcp.server") is not None

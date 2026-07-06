@@ -100,6 +100,29 @@ curl -X POST http://localhost:8080/summarize/multimodal/upload \
   -F "file=@recording.wav"
 ```
 
+### Video (server-side path)
+
+```bash
+curl -X POST http://localhost:8080/summarize/multimodal \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_type": "video",
+    "path": "/absolute/path/to/demo.mp4",
+    "model": "extractive",
+    "strategy": "map_reduce",
+    "max_length": 128
+  }'
+```
+
+```bash
+curl -X POST http://localhost:8080/summarize/multimodal/upload \
+  -F "input_type=video" \
+  -F "model=extractive" \
+  -F "strategy=map_reduce" \
+  -F "max_length=128" \
+  -F "file=@demo.mp4;type=video/mp4"
+```
+
 ## Grade summary
 
 ```bash

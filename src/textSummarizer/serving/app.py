@@ -19,6 +19,13 @@ from textSummarizer.pipeline.stage_04_model_trainer import ModelTrainerTrainingP
 from textSummarizer.pipeline.stage_05_model_evaluation import ModelEvaluationTrainingPipeline
 
 API_VERSION = "0.1.0"
+MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+VIDEO_MIME_TYPES = {
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "video/x-matroska",
+}
 
 SUMMARIZE_EXAMPLE = {
     "text": (
@@ -78,7 +85,7 @@ class MultimodalJsonRequest(BaseModel):
     )
     text: str | None = Field(default=None, description="Plain text (for text modality)")
     base64_data: str | None = Field(
-        default=None, description="Base64-encoded file content (image/audio)"
+        default=None, description="Base64-encoded file content (image/audio/video)"
     )
     path: str | None = Field(default=None, description="Server-side file path")
     model: str = Field(default="extractive", description="Text summarization model")
@@ -97,6 +104,8 @@ class MultimodalResponse(BaseModel):
     strategy: str
     caption: str | None = None
     transcript: str | None = None
+    document: str | None = None
+    visual_captions: str | None = None
 
 
 class GradeRequest(BaseModel):
@@ -151,7 +160,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SummarizeHub API",
     description=(
-        "Multimodal summarization platform — text, image, and audio inputs with "
+        "Multimodal summarization platform — text, image, audio, and video inputs with "
         "subjective grading and MCP agent integration"
     ),
     version=API_VERSION,
@@ -192,7 +201,26 @@ def _multimodal_result_to_response(result: dict, strategy: str) -> MultimodalRes
         strategy=strategy,
         caption=result.get("caption"),
         transcript=result.get("transcript"),
+        document=result.get("document"),
+        visual_captions=result.get("visual_captions"),
     )
+
+
+def _validate_video_upload(file: UploadFile, content: bytes) -> None:
+    if file.content_type and file.content_type not in VIDEO_MIME_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Unsupported video MIME type: {file.content_type}. "
+                f"Supported: {', '.join(sorted(VIDEO_MIME_TYPES))}"
+            ),
+        )
+    if len(content) > MAX_VIDEO_UPLOAD_BYTES:
+        max_mb = MAX_VIDEO_UPLOAD_BYTES // (1024 * 1024)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Video file exceeds maximum size of {max_mb} MB",
+        )
 
 
 @app.post("/summarize/multimodal", response_model=MultimodalResponse, tags=["inference"])
@@ -230,12 +258,16 @@ async def summarize_multimodal_json(request: MultimodalJsonRequest):
 )
 async def summarize_multimodal_upload(
     file: Annotated[UploadFile, File()],
-    input_type: Literal["image", "audio"] = Form(...),
+    input_type: Literal["image", "audio", "video"] = Form(...),
     model: str = Form(default="extractive"),
     strategy: str = Form(default="stuff"),
     max_length: int = Form(default=128, ge=16, le=512),
 ):
     content = await file.read()
+    if input_type == "video":
+        _validate_video_upload(file, content)
+        if strategy == "stuff":
+            strategy = "map_reduce"
     router = MultimodalRouter(text_model=model)
     try:
         result = router.summarize(
