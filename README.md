@@ -12,8 +12,6 @@
 
 **Nexus Forge** (SummarizeHub) is a production-ready NLP platform for multimodal summarization. Use it as a library, CLI, REST API, MCP server for AI agents, or [HuggingFace Space](https://huggingface.co/spaces) demo. One API surface across extractive and abstractive models, with a grading loop for quality-driven refinement.
 
----
-
 ## Features
 
 - **Four modalities** — text, image (BLIP captioning), audio (Whisper ASR), video (ffmpeg + ASR + keyframe captions)
@@ -24,8 +22,6 @@
 - **FastAPI serving** — `/summarize`, `/summarize/multimodal`, `/grade`, `/models`, `/train`
 - **5-stage training pipeline** — ingest → validate → transform → train → evaluate
 - **Cursor skill** — `skills/summarizehub/SKILL.md` for agent integration
-
----
 
 ## Architecture
 
@@ -56,8 +52,6 @@ flowchart LR
 
 Clients: **CLI** · **FastAPI** · **MCP** · **Gradio Space** · **Cursor agents**
 
----
-
 ## Modalities
 
 | Modality | Pipeline | Default Model | Optional Deps |
@@ -67,8 +61,6 @@ Clients: **CLI** · **FastAPI** · **MCP** · **Gradio Space** · **Cursor agent
 | **Audio** | Whisper ASR → summarize | `openai/whisper-tiny` | `soundfile` |
 | **Video** | ffmpeg audio + keyframes → Whisper + BLIP → merge | `openai/whisper-tiny` + BLIP | `ffmpeg`, `pillow`, `soundfile` |
 
----
-
 ## Quick start
 
 ```bash
@@ -77,25 +69,23 @@ pip install nexus-forge
 
 git clone https://github.com/askmy-stack/nexus-forge.git
 cd nexus-forge
-uv sync --group dev
+uv sync
 
 # CLI — summarize text (no GPU, extractive model)
-uv run text-summarizer \
-  --text "AI is transforming industries. Machine learning enables automation." \
-  --model extractive
+uv run text-summarizer summarize \
+  "AI is transforming industries. Machine learning enables automation." \
+  model extractive strategy map_reduce
 
-# List registered models
-uv run text-summarizer --list-models
+# List registered models (or use GET /models on the API)
+curl http://localhost:8080/models
 
 # Start API server
-uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
+uv run uvicorn textSummarizer.serving.app:app -p 8080
 
 # Start MCP server (for AI agents)
-uv sync --extra mcp
+uv pip install -e ".[mcp]"
 uv run python -m textSummarizer.mcp.server
 ```
-
----
 
 ## MCP setup
 
@@ -105,14 +95,10 @@ Add to Cursor `mcp.json`:
 {
   "mcpServers": {
     "summarizehub": {
-      "command": "uv",
+      "command": "bash",
       "args": [
-        "run",
-        "--directory",
-        "/path/to/nexus-forge",
-        "python",
-        "-m",
-        "textSummarizer.mcp.server"
+        "-c",
+        "cd /path/to/nexus-forge && uv run summarizehub-mcp"
       ]
     }
   }
@@ -129,8 +115,6 @@ Add to Cursor `mcp.json`:
 | `grade_summary` | Subjective rubric scoring (coherence, faithfulness, fluency, relevance) |
 
 See [skills/summarizehub/SKILL.md](skills/summarizehub/SKILL.md) for agent integration guidance.
-
----
 
 ## API
 
@@ -150,8 +134,6 @@ curl -X POST http://localhost:8080/summarize \
   -H "Content-Type: application/json" \
   -d '{"text": "AI is reshaping healthcare.", "model": "extractive", "max_length": 128}'
 ```
-
----
 
 ## Grading loop
 
@@ -174,8 +156,6 @@ result = loop.run("Long source text here...", max_length=128)
 print(result.score.to_dict())
 ```
 
----
-
 ## Training pipeline
 
 Five-stage MLOps pipeline orchestrated via CLI or `POST /train`:
@@ -191,8 +171,6 @@ Five-stage MLOps pipeline orchestrated via CLI or `POST /train`:
 ```bash
 uv run python scripts/run_pipeline.py
 ```
-
----
 
 ## Project structure
 
@@ -214,30 +192,29 @@ scripts/              # demo.py, run_pipeline.py, generate_demo_gif.py
 docs/assets/          # Demo GIF and static fallback
 ```
 
----
-
 ## Optional dependencies
 
 ```bash
-uv sync --extra multimodal   # image + audio + video
-uv sync --extra mcp          # MCP server
-uv sync --extra demo         # Gradio Space
-uv sync --extra eval         # BERTScore
-uv sync --extra onnx         # ONNX export + ORT inference
-uv sync --extra rag          # BM25 + sentence-transformers RAG
+uv pip install -e ".[multimodal]"   # image + audio + video
+uv pip install -e ".[mcp]"          # MCP server
+uv pip install -e ".[demo]"         # Gradio Space
+uv pip install -e ".[eval]"         # BERTScore
+uv pip install -e ".[onnx]"         # ONNX export + ORT inference
+uv pip install -e ".[rag]"          # BM25 + sentence-transformers RAG
 ```
 
 Video requires **ffmpeg** on `PATH` (`brew install ffmpeg` / `apt install ffmpeg`).
-
----
 
 ## ONNX inference
 
 Export BART/T5-family models to ONNX for faster CPU inference:
 
 ```bash
-uv sync --extra onnx
-uv run python scripts/export_onnx.py --model bart --output-dir artifacts/onnx/bart
+uv pip install -e ".[onnx]"
+uv run python -c "
+from textSummarizer.export.onnx import export_seq2seq_to_onnx
+export_seq2seq_to_onnx('bart', 'artifacts/onnx/bart')
+"
 
 # Use exported model
 python -c "
@@ -249,9 +226,7 @@ print(s.summarize('AI is reshaping healthcare.', max_length=64))
 
 Supported export models: `bart`, `t5`, `flan-t5`, `pegasus`, `pegasus-xsum`, `longt5`.
 
-Publish to PyPI: tag a release (`git tag v1.1.0 && git push origin v1.1.0`) or run `./scripts/publish_pypi.sh --upload` with `PYPI_API_TOKEN` set.
-
----
+Publish to PyPI: tag a release (`git tag v1.1.0 && git push origin v1.1.0`) or run `./scripts/publish_pypi.sh` with `PYPI_API_TOKEN` set for upload.
 
 ## Roadmap
 
@@ -265,8 +240,6 @@ Publish to PyPI: tag a release (`git tag v1.1.0 && git push origin v1.1.0`) or r
 | ✅ | ONNX export for faster inference |
 | ✅ | HuggingFace Space with GPU-backed abstractive models |
 | ✅ | Hierarchical and RAG-based summarization strategies |
-
----
 
 ## Contributing
 
@@ -283,8 +256,6 @@ Regenerate the README demo GIF:
 ```bash
 uv run python scripts/generate_demo_gif.py
 ```
-
----
 
 ## License
 

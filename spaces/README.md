@@ -30,9 +30,8 @@ export HF_USERNAME=your-hf-username
 export HF_SPACE_NAME=summarizehub   # optional, default: summarizehub
 ./scripts/deploy_hf_space.sh
 
-# Or manually:
-hf repo create summarizehub --type space --space-sdk gradio --space-hardware zero-gpu
-hf upload <username>/summarizehub spaces/ --repo-type space
+# Or manually create the Space on huggingface.co/new-space (Gradio SDK, ZeroGPU),
+# then upload the `spaces/` directory from this repo.
 ```
 
 Enable **ZeroGPU** in Space settings for free GPU bursts. The `@spaces.GPU` decorator in `app.py` requests GPU only during inference.
