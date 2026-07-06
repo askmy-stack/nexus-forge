@@ -7,7 +7,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![HuggingFace](https://img.shields.io/badge/🤗-Spaces-yellow)](https://huggingface.co/spaces)
 
-![Demo](docs/assets/demo.svg)
+![Demo](docs/assets/demo.png)
 
 **SummarizeHub** is a modernized NLP platform for single-pass and long-document summarization. Use it as a library, CLI, REST API, or [HuggingFace Space](https://huggingface.co/spaces) demo.
 
@@ -96,7 +96,7 @@ uv run python scripts/demo.py
 uv run uvicorn textSummarizer.serving.app:app --reload --port 8080
 ```
 
-> **Demo asset:** `docs/assets/demo.svg` is an animated placeholder. Record a real GIF with `bash docs/assets/record-demo.sh` and save as `docs/assets/demo.gif`.
+> **Demo asset:** `docs/assets/demo.png` is a static banner (GitHub blocks SVG in README). Regenerate with `python scripts/generate_demo_png.py`, or record a GIF via `bash docs/assets/record-demo.sh`.
 
 ---
 
