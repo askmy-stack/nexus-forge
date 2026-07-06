@@ -267,8 +267,7 @@ def frame_text_summarize(typed_chars: int) -> Image.Image:
         "Machine learning detects disease from medical scans."
     )
     summary = (
-        "AI reshapes healthcare, finance, and transport. "
-        "ML aids disease detection from imaging."
+        "AI reshapes healthcare, finance, and transport. ML aids disease detection from imaging."
     )
     shown = source[:typed_chars]
     _draw_text_in_box(draw, input_x, panel_y, panel_w, panel_h, shown, body_font, "#cbd5e1")
