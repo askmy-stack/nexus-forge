@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 WIDTH, HEIGHT = 1200, 525
 OUT = Path(__file__).resolve().parents[1] / "docs" / "assets" / "demo.gif"
+CLI_FRAME_OUT = Path(__file__).resolve().parents[1] / "docs" / "assets" / "demo-frame-cli.png"
 FRAME_MS = 900
 HOLD_FRAMES = 3
 
@@ -20,6 +21,15 @@ LABEL_OFFSET_Y = 22
 TEXT_PAD = 22
 TEXT_TOP = 58
 LINE_SPACING = 7
+MAX_PANEL_LINES = 4
+
+# CLI scene — hard panel boundaries (no text may cross these)
+CLI_INPUT_X = 40
+CLI_INPUT_W = 540  # x 40..580
+CLI_GAP_START = 580
+CLI_GAP_END = 620
+CLI_SUMMARY_X = 620
+CLI_SUMMARY_W = 540  # x 620..1160
 
 
 def _font(
@@ -130,6 +140,87 @@ def _draw_text_in_box(
     )
     for i, line in enumerate(lines):
         draw.text((content_x, content_y + i * line_h), line, fill=color, font=font)
+
+
+def _render_clipped_panel_text(
+    panel_w: int,
+    panel_h: int,
+    text: str,
+    font: ImageFont.ImageFont,
+    color: str,
+    max_lines: int = MAX_PANEL_LINES,
+) -> Image.Image:
+    """Render wrapped text into an isolated layer clipped to the panel content area."""
+    content_w = panel_w - 2 * TEXT_PAD
+    content_h = panel_h - TEXT_TOP - TEXT_PAD
+    line_h = _line_height(font)
+
+    layer = Image.new("RGBA", (panel_w, panel_h), (0, 0, 0, 0))
+    probe = ImageDraw.Draw(layer)
+    lines = _truncate_lines(
+        probe,
+        _wrap_text(probe, text, font, content_w),
+        font,
+        content_w,
+        max_lines,
+    )
+
+    content = Image.new("RGBA", (content_w, content_h), (0, 0, 0, 0))
+    content_draw = ImageDraw.Draw(content)
+    for i, line in enumerate(lines):
+        y = i * line_h
+        if y + line_h > content_h:
+            break
+        content_draw.text((0, y), line, fill=color, font=font)
+
+    layer.paste(content, (TEXT_PAD, TEXT_TOP), content)
+    return layer
+
+
+def _make_panel_image(
+    w: int,
+    h: int,
+    label: str,
+    label_color: str,
+    text: str,
+    text_font: ImageFont.ImageFont,
+    text_color: str,
+    fill: str = "#0f172a",
+    outline: str = "#334155",
+    max_lines: int = MAX_PANEL_LINES,
+) -> Image.Image:
+    """Build a self-contained panel with shadow, label, and clipped text."""
+    shadow_offset = 4
+    canvas = Image.new("RGBA", (w + shadow_offset, h + shadow_offset), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shadow_draw = ImageDraw.Draw(shadow)
+    shadow_draw.rounded_rectangle(
+        (0, 0, w - 1, h - 1),
+        radius=PANEL_RADIUS,
+        fill=(0, 0, 0, 72),
+    )
+    canvas.paste(shadow, (shadow_offset, shadow_offset), shadow)
+
+    panel = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    panel_draw = ImageDraw.Draw(panel)
+    panel_draw.rounded_rectangle(
+        (0, 0, w - 1, h - 1),
+        radius=PANEL_RADIUS,
+        fill=fill,
+        outline=outline,
+        width=2,
+    )
+    label_font = _font(14, bold=True)
+    panel_draw.text((TEXT_PAD, LABEL_OFFSET_Y), label, fill=label_color, font=label_font)
+
+    if text:
+        text_layer = _render_clipped_panel_text(
+            w, h, text, text_font, text_color, max_lines=max_lines
+        )
+        panel = Image.alpha_composite(panel, text_layer)
+
+    canvas.paste(panel, (0, 0), panel)
+    return canvas
 
 
 def _gradient_bg() -> Image.Image:
@@ -244,8 +335,17 @@ def frame_hero(progress: float) -> Image.Image:
     return img
 
 
+TEXT_SOURCE = (
+    "AI is reshaping healthcare, finance, and transportation. "
+    "Machine learning detects disease from medical scans."
+)
+TEXT_SUMMARY = (
+    "AI reshapes healthcare, finance, and transport. ML aids disease detection from imaging."
+)
+
+
 def frame_text_summarize(typed_chars: int) -> Image.Image:
-    img = _gradient_bg()
+    img = _gradient_bg().convert("RGBA")
     draw = ImageDraw.Draw(img)
     _header(
         draw,
@@ -254,29 +354,52 @@ def frame_text_summarize(typed_chars: int) -> Image.Image:
     )
 
     panel_y, panel_h = 142, 248
-    panel_w = (WIDTH - 2 * MARGIN - PANEL_GAP) // 2
-    input_x = MARGIN
-    output_x = input_x + panel_w + PANEL_GAP
     body_font = _font(15)
 
-    _panel(draw, input_x, panel_y, panel_w, panel_h, "INPUT", "#38bdf8")
-    _panel(draw, output_x, panel_y, panel_w, panel_h, "SUMMARY", "#34d399")
-
-    source = (
-        "AI is reshaping healthcare, finance, and transportation. "
-        "Machine learning detects disease from medical scans."
+    # INPUT panel — isolated layer, text clipped to left region only
+    shown = TEXT_SOURCE[:typed_chars]
+    input_panel = _make_panel_image(
+        CLI_INPUT_W,
+        panel_h,
+        "INPUT",
+        "#38bdf8",
+        shown,
+        body_font,
+        "#cbd5e1",
     )
-    summary = (
-        "AI reshapes healthcare, finance, and transport. ML aids disease detection from imaging."
-    )
-    shown = source[:typed_chars]
-    _draw_text_in_box(draw, input_x, panel_y, panel_w, panel_h, shown, body_font, "#cbd5e1")
+    img.paste(input_panel, (CLI_INPUT_X, panel_y), input_panel)
 
-    if typed_chars >= len(source):
-        _draw_text_in_box(draw, output_x, panel_y, panel_w, panel_h, summary, body_font, "#f8fafc")
+    # SUMMARY panel — only rendered after typing completes
+    complete = typed_chars >= len(TEXT_SOURCE)
+    if complete:
+        summary_panel = _make_panel_image(
+            CLI_SUMMARY_W,
+            panel_h,
+            "SUMMARY",
+            "#34d399",
+            TEXT_SUMMARY,
+            body_font,
+            "#f8fafc",
+        )
+        img.paste(summary_panel, (CLI_SUMMARY_X, panel_y), summary_panel)
+
         arrow_y = panel_y + panel_h // 2
-        _arrow(draw, input_x + panel_w + 10, output_x - 10, arrow_y)
+        _arrow(draw, CLI_GAP_START + 4, CLI_GAP_END - 4, arrow_y)
+    else:
+        # Empty right panel shell (no summary text during typing)
+        empty_summary = _make_panel_image(
+            CLI_SUMMARY_W,
+            panel_h,
+            "SUMMARY",
+            "#34d399",
+            "",
+            body_font,
+            "#f8fafc",
+        )
+        img.paste(empty_summary, (CLI_SUMMARY_X, panel_y), empty_summary)
 
+    img = img.convert("RGB")
+    draw = ImageDraw.Draw(img)
     _terminal_bar(
         draw,
         410,
@@ -374,14 +497,12 @@ def build_frames() -> list[Image.Image]:
     for i in range(5):
         frames.append(frame_hero((i + 1) / 5))
 
-    source = (
-        "AI is reshaping healthcare, finance, and transportation. "
-        "Machine learning detects disease from medical scans."
-    )
-    for i in range(0, len(source) + 20, 12):
-        frames.append(frame_text_summarize(min(i, len(source))))
+    # Smoother typing: smaller steps, stays inside INPUT panel via clip mask
+    step = 6
+    for i in range(0, len(TEXT_SOURCE) + step, step):
+        frames.append(frame_text_summarize(min(i, len(TEXT_SOURCE))))
     for _ in range(HOLD_FRAMES):
-        frames.append(frame_text_summarize(len(source)))
+        frames.append(frame_text_summarize(len(TEXT_SOURCE)))
 
     for i in range(6):
         frames.append(frame_mcp(i % 6))
@@ -397,6 +518,59 @@ def build_frames() -> list[Image.Image]:
     return frames
 
 
+def _is_body_text_pixel(r: int, g: int, b: int) -> bool:
+    """Detect INPUT/SUMMARY body text; ignore green arrow in center gap."""
+    if g > 170 and g > r + 60 and g > b + 30:
+        return False
+    return r > 140 and g > 140 and b > 140
+
+
+def verify_cli_frame(frame: Image.Image) -> None:
+    """Assert INPUT text stays left of gap and SUMMARY text stays right of gap."""
+    rgb = frame.convert("RGB")
+    panel_y, panel_h = 142, 248
+    text_y_start = panel_y + TEXT_TOP
+    text_y_end = panel_y + panel_h - TEXT_PAD
+
+    gap_text_pixels = 0
+    input_in_gap = 0
+    summary_in_gap = 0
+    input_max_x = 0
+    summary_min_x = WIDTH
+
+    for y in range(text_y_start, text_y_end):
+        for x in range(CLI_GAP_START, CLI_GAP_END):
+            r, g, b = rgb.getpixel((x, y))
+            if _is_body_text_pixel(r, g, b):
+                gap_text_pixels += 1
+
+        for x in range(CLI_INPUT_X, CLI_GAP_START):
+            r, g, b = rgb.getpixel((x, y))
+            if _is_body_text_pixel(r, g, b):
+                input_max_x = max(input_max_x, x)
+                if x >= CLI_GAP_START:
+                    input_in_gap += 1
+
+        for x in range(CLI_SUMMARY_X, CLI_SUMMARY_X + CLI_SUMMARY_W):
+            r, g, b = rgb.getpixel((x, y))
+            if _is_body_text_pixel(r, g, b):
+                summary_min_x = min(summary_min_x, x)
+                if x < CLI_SUMMARY_X:
+                    summary_in_gap += 1
+
+    print("CLI frame verification:")
+    print(f"  gap text pixels (580-620): {gap_text_pixels} (expect 0)")
+    print(f"  INPUT max text x: {input_max_x} (expect < 600)")
+    print(f"  SUMMARY min text x: {summary_min_x} (expect > 620)")
+    print(f"  INPUT bleed into gap: {input_in_gap}")
+    print(f"  SUMMARY bleed into gap: {summary_in_gap}")
+
+    assert gap_text_pixels == 0, f"Text found in center gap: {gap_text_pixels} pixels"
+    assert input_max_x < 600, f"INPUT text extends too far right: x={input_max_x}"
+    assert summary_min_x > 620, f"SUMMARY text starts too far left: x={summary_min_x}"
+    print("  PASS — no overlap detected")
+
+
 def main() -> None:
     frames = build_frames()
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -410,6 +584,12 @@ def main() -> None:
     )
     size_mb = OUT.stat().st_size / (1024 * 1024)
     print(f"Wrote {OUT} ({len(frames)} frames, {size_mb:.2f} MB)")
+
+    cli_frame = frame_text_summarize(len(TEXT_SOURCE))
+    CLI_FRAME_OUT.parent.mkdir(parents=True, exist_ok=True)
+    cli_frame.save(CLI_FRAME_OUT)
+    print(f"Wrote {CLI_FRAME_OUT}")
+    verify_cli_frame(cli_frame)
 
 
 if __name__ == "__main__":
