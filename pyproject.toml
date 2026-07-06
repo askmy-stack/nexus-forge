@@ -1,6 +1,6 @@
 [project]
 name = "text-summarizer"
-version = "0.1.0"
+version = "1.0.0"
 description = "Multimodal summarization platform with MCP agent integration and subjective grading"
 authors = [{ name = "Abhinaysai Kamineni", email = "askmy-stack@users.noreply.github.com" }]
 license = { text = "MIT" }
@@ -23,6 +23,8 @@ dependencies = [
   "tqdm>=4.0",
   "numpy>=1.26",
   "scikit-learn>=1.5",
+  "sentencepiece>=0.2.0",
+  "protobuf>=4.0",
 ]
 
 [project.optional-dependencies]

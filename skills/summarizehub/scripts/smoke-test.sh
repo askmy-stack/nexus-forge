@@ -3,10 +3,10 @@
 # Usage: bash scripts/smoke-test.sh [REPO_PATH]
 set -euo pipefail
 
-REPO_PATH="${1:-$(cd "$(dirname "$0")/../../../Projects/nlp-text-summarization" 2>/dev/null && pwd || echo "")}"
+REPO_PATH="${1:-$(cd "$(dirname "$0")/../../../.." 2>/dev/null && pwd || echo "")}"
 
 if [[ -z "$REPO_PATH" || ! -d "$REPO_PATH" ]]; then
-  echo "Usage: bash smoke-test.sh /path/to/nlp-text-summarization" >&2
+  echo "Usage: bash smoke-test.sh /path/to/nexus-forge" >&2
   exit 1
 fi
 

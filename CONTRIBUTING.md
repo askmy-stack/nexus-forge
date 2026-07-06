@@ -5,8 +5,8 @@ Thank you for your interest in contributing! This project welcomes improvements 
 ## Development setup
 
 ```bash
-git clone https://github.com/askmy-stack/nlp-text-summarization.git
-cd nlp-text-summarization
+git clone https://github.com/askmy-stack/nexus-forge.git
+cd nexus-forge
 uv sync --group dev
 uv run pre-commit install
 ```

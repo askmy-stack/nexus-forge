@@ -31,7 +31,7 @@ class ImageSummarizer:
                 "Install multimodal extras: uv sync --extra multimodal"
             ) from exc
         logger.info("Loading image captioning model: %s", self.caption_model)
-        self._pipeline = pipeline("image-to-text", model=self.caption_model)
+        self._pipeline = pipeline("image-text-to-text", model=self.caption_model)
         return self._pipeline
 
     def _load_image(self, path: str | None, data: bytes | None):
@@ -51,7 +51,11 @@ class ImageSummarizer:
     def caption(self, path: str | None = None, data: bytes | None = None) -> str:
         pipe = self._load_pipeline()
         image = self._load_image(path, data)
-        result = pipe(image)
+        try:
+            result = pipe(image)
+        except ValueError:
+            # image-text-to-text pipelines (newer transformers) require a text prompt.
+            result = pipe(image, text="")
         if isinstance(result, list) and result:
             return str(result[0].get("generated_text", "")).strip()
         if isinstance(result, dict):

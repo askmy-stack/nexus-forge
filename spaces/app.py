@@ -22,8 +22,8 @@ demo = gr.Interface(
         gr.Slider(minimum=32, maximum=256, value=128, step=16, label="Max length"),
     ],
     outputs=gr.Textbox(label="Summary", lines=6),
-    title="NLP Text Summarization",
-    description="Compare extractive and abstractive summarization models.",
+    title="SummarizeHub",
+    description="Multimodal summarization — compare extractive and abstractive models.",
 )
 
 if __name__ == "__main__":
