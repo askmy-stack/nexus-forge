@@ -152,7 +152,7 @@ curl -X POST http://localhost:8080/summarize \
 
 ## Grading loop
 
-Subjective scoring for loop engineering — no OpenAI API key required (heuristic judge by default):
+Subjective scoring for loop engineering — heuristic judge by default; optional deepeval G-Eval with `OPENAI_API_KEY` (see [docs/GEVAL.md](docs/GEVAL.md)):
 
 | Dimension | Scale |
 |-----------|-------|
@@ -213,7 +213,7 @@ docs/assets/          # Demo GIF and static fallback
 uv pip install -e ".[multimodal]"   # image + audio + video
 uv pip install -e ".[mcp]"          # MCP server
 uv pip install -e ".[demo]"         # Gradio Space
-uv pip install -e ".[eval]"         # BERTScore
+uv pip install -e ".[eval]"         # BERTScore + deepeval G-Eval
 uv pip install -e ".[onnx]"         # ONNX export + ORT inference
 uv pip install -e ".[rag]"          # BM25 + sentence-transformers RAG
 ```
@@ -269,8 +269,8 @@ Results are written to [docs/benchmarks.md](docs/benchmarks.md). For human evalu
 | ✅ | G-Eval tier-4 evaluation, benchmarks, citation spans |
 | ✅ | Multi-doc RAG, YAML rubrics, video scene detection |
 | ✅ | LangChain tools, Docker Compose, nightly CI |
-| 🔜 | Full deepeval G-Eval with LLM API keys |
-| 🔜 | Production GPU autoscaling |
+| ✅ | Full deepeval G-Eval with LLM API keys (`docs/GEVAL.md`) |
+| ✅ | Production GPU autoscaling (ZeroGPU, `gpu_pool`, Docker/K8s) |
 
 ## Contributing
 

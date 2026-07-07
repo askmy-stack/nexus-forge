@@ -1,4 +1,7 @@
 services:
+  # CPU API — scale replicas when using Docker Swarm or Compose v3 deploy:
+  #   deploy:
+  #     replicas: 3
   api:
     build:
       context: .
@@ -10,6 +13,8 @@ services:
       - TRAIN_API_KEY=${TRAIN_API_KEY:-}
       - REQUIRE_TRAIN_KEY=${REQUIRE_TRAIN_KEY:-0}
       - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-60}
+      - MAX_GPU_JOBS=${MAX_GPU_JOBS:-2}
+      - MODEL_CACHE_TTL_SECONDS=${MODEL_CACHE_TTL_SECONDS:-3600}
     command: uvicorn textSummarizer.serving.app:app --host 0.0.0.0 --port 8080
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -17,6 +22,9 @@ services:
       timeout: 10s
       retries: 3
 
+  # GPU profile — requires NVIDIA Container Toolkit.
+  # Scale horizontally (Swarm/Kubernetes) or run multiple replicas:
+  #   docker compose --profile gpu up --scale api-gpu=2
   api-gpu:
     profiles: ["gpu"]
     build:
@@ -29,6 +37,8 @@ services:
       - TRAIN_API_KEY=${TRAIN_API_KEY:-}
       - REQUIRE_TRAIN_KEY=${REQUIRE_TRAIN_KEY:-0}
       - NVIDIA_VISIBLE_DEVICES=all
+      - MAX_GPU_JOBS=${MAX_GPU_JOBS:-2}
+      - MODEL_CACHE_TTL_SECONDS=${MODEL_CACHE_TTL_SECONDS:-3600}
     deploy:
       resources:
         reservations:

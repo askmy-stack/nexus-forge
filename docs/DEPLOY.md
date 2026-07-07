@@ -126,6 +126,42 @@ docker compose up api
 
 See `docker-compose.yml` for containerized deployment.
 
+## GPU autoscaling
+
+### HuggingFace ZeroGPU (Spaces)
+
+The Space uses `@spaces.GPU(duration=60)` so GPU is allocated only during inference bursts.
+
+1. Create or open your Space on [huggingface.co/spaces](https://huggingface.co/spaces)
+2. **Settings → Hardware → ZeroGPU** — enable ZeroGPU (free GPU bursts)
+3. Ensure `spaces/README.md` frontmatter or `spaces/space.yaml` includes `hardware: zero-gpu`
+4. For sustained load, upgrade to **T4 small** or larger in Space settings
+
+See [spaces/README.md](../spaces/README.md) for deploy steps.
+
+### Docker Compose GPU profile
+
+```bash
+# Single GPU replica (default)
+docker compose --profile gpu up api-gpu
+
+# Scale replicas (Swarm-compatible; each replica respects MAX_GPU_JOBS)
+MAX_GPU_JOBS=2 MODEL_CACHE_TTL_SECONDS=3600 docker compose --profile gpu up --scale api-gpu=2
+```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_GPU_JOBS` | `2` | Max concurrent GPU inference jobs per replica |
+| `MODEL_CACHE_TTL_SECONDS` | `3600` | Evict cached models after idle TTL |
+
+### Kubernetes
+
+For HPA, GPU node pools, and deployment manifests, see [K8S_AUTOSCALING.md](K8S_AUTOSCALING.md).
+
+## G-Eval LLM judging
+
+See [GEVAL.md](GEVAL.md) for `OPENAI_API_KEY` / `GEVAL_API_KEY` setup and tier-4 evaluation.
+
 ## OpenAPI Export
 
 ```bash
