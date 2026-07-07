@@ -6,11 +6,16 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![v1.2.0](https://img.shields.io/badge/release-v1.2.0-green.svg)](https://github.com/askmy-stack/nexus-forge/releases/tag/v1.2.0)
-[![HuggingFace](https://img.shields.io/badge/🤗-Spaces-yellow)](https://huggingface.co/spaces)
+[![HuggingFace](https://img.shields.io/badge/🤗-Spaces-yellow)](https://huggingface.co/spaces/askhugsai/nexus-forge)
 
 ![SummarizeHub Demo](docs/assets/demo-v2.gif)
 
-**Nexus Forge** (SummarizeHub) is a production-ready NLP platform for multimodal summarization. Use it as a library, CLI, REST API, MCP server for AI agents, or [HuggingFace Space](https://huggingface.co/spaces) demo. One API surface across extractive and abstractive models, with a grading loop for quality-driven refinement.
+**Nexus Forge** (SummarizeHub) is a production-ready NLP platform for multimodal summarization. Use it as a library, CLI, REST API, MCP server for AI agents, or [HuggingFace Space](https://huggingface.co/spaces/askhugsai/nexus-forge) demo. One API surface across extractive and abstractive models, with a grading loop for quality-driven refinement.
+
+## Live on Hugging Face
+
+- **Space (demo):** [askhugsai/nexus-forge](https://huggingface.co/spaces/askhugsai/nexus-forge)
+- **Fine-tuned model:** [askhugsai/pegasus-samsum](https://huggingface.co/askhugsai/pegasus-samsum)
 
 ## Features
 
