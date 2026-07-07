@@ -49,3 +49,9 @@ class GradingRubric:
 
     def passes(self, score: RubricScore) -> bool:
         return score.average >= self.threshold
+
+    @classmethod
+    def from_yaml(cls, path: str) -> "GradingRubric":
+        from textSummarizer.grading.rubric_loader import load_rubric_from_yaml
+
+        return load_rubric_from_yaml(path)

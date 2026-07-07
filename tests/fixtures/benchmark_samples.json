@@ -1,0 +1,14 @@
+[
+  {
+    "source": "Artificial intelligence is transforming healthcare. Machine learning detects diseases from medical images. Hospitals deploy AI assistants for triage.",
+    "reference": "AI transforms healthcare with ML disease detection and hospital triage assistants."
+  },
+  {
+    "source": "Climate change raises global temperatures. Renewable energy adoption is accelerating worldwide. Governments set net-zero emission targets.",
+    "reference": "Climate change drives renewable energy growth and net-zero policies."
+  },
+  {
+    "source": "Large language models power chatbots and code assistants. Retrieval augmented generation improves factual accuracy. Fine-tuning adapts models to domains.",
+    "reference": "LLMs enable chatbots and code tools; RAG and fine-tuning improve accuracy."
+  }
+]

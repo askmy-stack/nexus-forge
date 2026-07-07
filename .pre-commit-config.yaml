@@ -12,3 +12,11 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+  - repo: local
+    hooks:
+      - id: verify-demo-gif
+        name: verify demo GIF frame layout
+        entry: uv run python scripts/verify_demo_gif.py
+        language: system
+        pass_filenames: false
+        files: ^(scripts/generate_demo_gif\.py|docs/assets/demo-v2\.gif)$

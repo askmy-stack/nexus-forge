@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - API_KEY=${API_KEY:-}
+      - TRAIN_API_KEY=${TRAIN_API_KEY:-}
+      - REQUIRE_TRAIN_KEY=${REQUIRE_TRAIN_KEY:-0}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-60}
+    command: uvicorn textSummarizer.serving.app:app --host 0.0.0.0 --port 8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api-gpu:
+    profiles: ["gpu"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - API_KEY=${API_KEY:-}
+      - TRAIN_API_KEY=${TRAIN_API_KEY:-}
+      - REQUIRE_TRAIN_KEY=${REQUIRE_TRAIN_KEY:-0}
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: uvicorn textSummarizer.serving.app:app --host 0.0.0.0 --port 8080

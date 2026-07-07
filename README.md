@@ -5,7 +5,7 @@
 [![CI](https://github.com/askmy-stack/nexus-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/askmy-stack/nexus-forge/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![v1.0.0](https://img.shields.io/badge/release-v1.0.0-green.svg)](https://github.com/askmy-stack/nexus-forge/releases/tag/v1.0.0)
+[![v1.2.0](https://img.shields.io/badge/release-v1.2.0-green.svg)](https://github.com/askmy-stack/nexus-forge/releases/tag/v1.2.0)
 [![HuggingFace](https://img.shields.io/badge/🤗-Spaces-yellow)](https://huggingface.co/spaces)
 
 ![SummarizeHub Demo](docs/assets/demo-v2.gif)
@@ -19,7 +19,7 @@
 - **Long-document strategies** — stuff, map-reduce, refine, hierarchical (RAPTOR), and RAG retrieval
 - **MCP server** — 6 tools: `summarize_text`, `summarize_image`, `summarize_audio`, `summarize_video`, `list_models`, `grade_summary`
 - **Grading loop** — subjective rubric (coherence, faithfulness, fluency, relevance) with summarize → grade → refine
-- **FastAPI serving** — `/summarize`, `/summarize/multimodal`, `/grade`, `/models`, `/train`
+- **FastAPI serving** — `/summarize`, `/summarize/stream` (SSE), `/summarize/citations`, `/summarize/multimodal`, `/grade`, `/models`, `/train`
 - **5-stage training pipeline** — ingest → validate → transform → train → evaluate
 - **Cursor skill** — `skills/summarizehub/SKILL.md` for agent integration
 
@@ -82,6 +82,12 @@ curl http://localhost:8080/models
 # Start API server
 uv run uvicorn textSummarizer.serving.app:app -p 8080
 
+# Docker Compose (API on port 8080)
+docker compose up api
+
+# GPU profile (requires NVIDIA Container Toolkit)
+docker compose --profile gpu up api-gpu
+
 # Start MCP server (for AI agents)
 uv pip install -e ".[mcp]"
 uv run python -m textSummarizer.mcp.server
@@ -114,7 +120,7 @@ Add to Cursor `mcp.json`:
 | `list_models` | List available summarization models |
 | `grade_summary` | Subjective rubric scoring (coherence, faithfulness, fluency, relevance) |
 
-See [skills/summarizehub/SKILL.md](skills/summarizehub/SKILL.md) for agent integration guidance.
+See [skills/summarizehub/SKILL.md](skills/summarizehub/SKILL.md) and [docs/MCP_PLUGIN.md](docs/MCP_PLUGIN.md) for agent integration guidance.
 
 ## API
 
@@ -123,11 +129,15 @@ See [skills/summarizehub/SKILL.md](skills/summarizehub/SKILL.md) for agent integ
 | `GET` | `/health` | Service health and model count |
 | `GET` | `/models` | List registered models |
 | `POST` | `/summarize` | Summarize text |
+| `POST` | `/summarize/stream` | SSE streaming summarization |
+| `POST` | `/summarize/citations` | Summarize with source citation spans |
 | `POST` | `/summarize/multimodal` | Multimodal summarization (JSON + base64) |
 | `POST` | `/summarize/multimodal/upload` | Multimodal file upload (image/audio/video) |
 | `POST` | `/grade` | Grade a summary against source |
 | `POST` | `/train` | Run full training pipeline (requires `TRAIN_API_KEY`) |
 | `GET` | `/docs` | OpenAPI interactive docs |
+
+Set `API_KEY` to protect inference routes. Export OpenAPI schema: `uv run python scripts/export_openapi.py`.
 
 ```bash
 curl -X POST http://localhost:8080/summarize \
@@ -228,6 +238,16 @@ Supported export models: `bart`, `t5`, `flan-t5`, `pegasus`, `pegasus-xsum`, `lo
 
 Publish to PyPI: tag a release (`git tag v1.1.0 && git push origin v1.1.0`) or run `./scripts/publish_pypi.sh` with `PYPI_API_TOKEN` set for upload.
 
+## Benchmarks
+
+Run the benchmark script on a small fixture dataset:
+
+```bash
+uv run python scripts/run_benchmarks.py
+```
+
+Results are written to [docs/benchmarks.md](docs/benchmarks.md). For human evaluation, use [docs/human_eval_template.md](docs/human_eval_template.md).
+
 ## Roadmap
 
 | Status | Item |
@@ -240,6 +260,12 @@ Publish to PyPI: tag a release (`git tag v1.1.0 && git push origin v1.1.0`) or r
 | ✅ | ONNX export for faster inference |
 | ✅ | HuggingFace Space with GPU-backed abstractive models |
 | ✅ | Hierarchical and RAG-based summarization strategies |
+| ✅ | Model caching, SSE streaming, API auth + rate limits |
+| ✅ | G-Eval tier-4 evaluation, benchmarks, citation spans |
+| ✅ | Multi-doc RAG, YAML rubrics, video scene detection |
+| ✅ | LangChain tools, Docker Compose, nightly CI |
+| 🔜 | Full deepeval G-Eval with LLM API keys |
+| 🔜 | Production GPU autoscaling |
 
 ## Contributing
 

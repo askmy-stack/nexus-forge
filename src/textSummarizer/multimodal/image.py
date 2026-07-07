@@ -2,6 +2,7 @@ import logging
 from io import BytesIO
 
 from textSummarizer.models import ModelFactory
+from textSummarizer.models.cache import cache_key, get_model_cache
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,12 @@ class ImageSummarizer:
         self._pipeline = None
 
     def _load_pipeline(self):
+        cache = get_model_cache()
+        lookup = cache_key("blip", self.caption_model)
+        cached = cache.get(lookup)
+        if cached is not None:
+            self._pipeline = cached
+            return self._pipeline
         if self._pipeline is not None:
             return self._pipeline
         try:
@@ -32,6 +39,7 @@ class ImageSummarizer:
             ) from exc
         logger.info("Loading image captioning model: %s", self.caption_model)
         self._pipeline = pipeline("image-text-to-text", model=self.caption_model)
+        cache.put(lookup, self._pipeline)
         return self._pipeline
 
     def _load_image(self, path: str | None, data: bytes | None):

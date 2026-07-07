@@ -1,10 +1,12 @@
+import json
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, StreamingResponse
 
 from textSummarizer.components.prediction import PredictionPipeline
 from textSummarizer.grading.llm_judge import LLMJudge
@@ -18,8 +20,15 @@ from textSummarizer.pipeline.stage_03_data_transformation import DataTransformat
 from textSummarizer.pipeline.stage_04_model_trainer import ModelTrainerTrainingPipeline
 from textSummarizer.pipeline.stage_05_model_evaluation import ModelEvaluationTrainingPipeline
 from textSummarizer.pipelines import STRATEGY_PATTERN
+from textSummarizer.pipelines.citations import summarize_with_citations
+from textSummarizer.serving.auth import (
+    APIKeyMiddleware,
+    SimpleRateLimitMiddleware,
+    verify_api_key,
+    verify_train_key,
+)
 
-API_VERSION = "0.1.0"
+API_VERSION = "1.2.0"
 MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
 VIDEO_MIME_TYPES = {
     "video/mp4",
@@ -74,6 +83,10 @@ class SummarizeResponse(BaseModel):
     strategy: str
 
 
+class SummarizeWithCitationsResponse(SummarizeResponse):
+    citations: list[dict]
+
+
 class HealthResponse(BaseModel):
     status: str
     version: str
@@ -107,12 +120,14 @@ class MultimodalResponse(BaseModel):
     transcript: str | None = None
     document: str | None = None
     visual_captions: str | None = None
+    chapters: list[dict] | None = None
 
 
 class GradeRequest(BaseModel):
     source: str = Field(..., min_length=1, max_length=50000, description="Source text")
     summary: str = Field(..., min_length=1, max_length=10000, description="Summary to grade")
     threshold: float = Field(default=3.5, ge=1.0, le=5.0, description="Pass threshold (1-5)")
+    rubric: str | None = Field(default=None, description="YAML rubric name from config/rubrics/")
 
 
 class GradeScoreResponse(BaseModel):
@@ -128,12 +143,6 @@ class GradeResponse(BaseModel):
     score: GradeScoreResponse
     passes: bool
     threshold: float
-
-
-def _verify_train_key(x_api_key: str | None = Header(default=None)) -> None:
-    expected = os.getenv("TRAIN_API_KEY")
-    if expected and x_api_key != expected:
-        raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 def _run_summarization(request: SummarizeRequest) -> str:
@@ -152,10 +161,38 @@ def _run_summarization(request: SummarizeRequest) -> str:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+async def _stream_summary(request: SummarizeRequest) -> AsyncIterator[str]:
+    summary = _run_summarization(request)
+    words = summary.split()
+    if not words:
+        yield 'data: {"done": true, "summary": ""}\n\n'
+        return
+
+    partial: list[str] = []
+    for word in words:
+        partial.append(word)
+        payload = {"token": word, "partial": " ".join(partial)}
+        yield f"data: {json.dumps(payload)}\n\n"
+
+    final = {
+        "done": True,
+        "summary": summary,
+        "model": request.model,
+        "strategy": request.strategy,
+    }
+    yield f"data: {json.dumps(final)}\n\n"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.models = ModelFactory.list_models()
+    # Warm extractive model in cache for faster first request
+    ModelFactory.create("extractive")
     yield
+
+
+def _rate_limit() -> int:
+    return int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
 
 
 app = FastAPI(
@@ -167,6 +204,8 @@ app = FastAPI(
     version=API_VERSION,
     lifespan=lifespan,
 )
+app.add_middleware(SimpleRateLimitMiddleware, requests_per_minute=_rate_limit())
+app.add_middleware(APIKeyMiddleware)
 
 
 @app.get("/", tags=["docs"])
@@ -188,10 +227,45 @@ async def list_models():
     return ModelFactory.list_models()
 
 
-@app.post("/summarize", response_model=SummarizeResponse, tags=["inference"])
+@app.post(
+    "/summarize",
+    response_model=SummarizeResponse,
+    tags=["inference"],
+    dependencies=[Depends(verify_api_key)],
+)
 async def summarize(request: SummarizeRequest):
     summary = _run_summarization(request)
     return SummarizeResponse(summary=summary, model=request.model, strategy=request.strategy)
+
+
+@app.post(
+    "/summarize/stream",
+    tags=["inference"],
+    dependencies=[Depends(verify_api_key)],
+)
+async def summarize_stream(request: SummarizeRequest):
+    return StreamingResponse(
+        _stream_summary(request),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post(
+    "/summarize/citations",
+    response_model=SummarizeWithCitationsResponse,
+    tags=["inference"],
+    dependencies=[Depends(verify_api_key)],
+)
+async def summarize_with_citation_spans(request: SummarizeRequest):
+    summary = _run_summarization(request)
+    result = summarize_with_citations(request.text, summary)
+    return SummarizeWithCitationsResponse(
+        summary=result["summary"],
+        model=request.model,
+        strategy=request.strategy,
+        citations=result["citations"],
+    )
 
 
 def _multimodal_result_to_response(result: dict, strategy: str) -> MultimodalResponse:
@@ -204,6 +278,7 @@ def _multimodal_result_to_response(result: dict, strategy: str) -> MultimodalRes
         transcript=result.get("transcript"),
         document=result.get("document"),
         visual_captions=result.get("visual_captions"),
+        chapters=result.get("chapters"),
     )
 
 
@@ -224,7 +299,12 @@ def _validate_video_upload(file: UploadFile, content: bytes) -> None:
         )
 
 
-@app.post("/summarize/multimodal", response_model=MultimodalResponse, tags=["inference"])
+@app.post(
+    "/summarize/multimodal",
+    response_model=MultimodalResponse,
+    tags=["inference"],
+    dependencies=[Depends(verify_api_key)],
+)
 async def summarize_multimodal_json(request: MultimodalJsonRequest):
     try:
         input_type = InputType(request.input_type)
@@ -256,6 +336,7 @@ async def summarize_multimodal_json(request: MultimodalJsonRequest):
     "/summarize/multimodal/upload",
     response_model=MultimodalResponse,
     tags=["inference"],
+    dependencies=[Depends(verify_api_key)],
 )
 async def summarize_multimodal_upload(
     file: Annotated[UploadFile, File()],
@@ -286,19 +367,27 @@ async def summarize_multimodal_upload(
     return _multimodal_result_to_response(result, strategy)
 
 
-@app.post("/grade", response_model=GradeResponse, tags=["grading"])
+@app.post(
+    "/grade",
+    response_model=GradeResponse,
+    tags=["grading"],
+    dependencies=[Depends(verify_api_key)],
+)
 async def grade_summary(request: GradeRequest):
-    rubric = GradingRubric(threshold=request.threshold)
+    if request.rubric:
+        rubric = GradingRubric.from_yaml(request.rubric)
+    else:
+        rubric = GradingRubric(threshold=request.threshold)
     judge = LLMJudge(use_llm=False)
     score = judge.grade(request.source, request.summary)
     return GradeResponse(
         score=GradeScoreResponse(**score.to_dict()),
         passes=rubric.passes(score),
-        threshold=request.threshold,
+        threshold=rubric.threshold,
     )
 
 
-@app.post("/train", tags=["training"], dependencies=[Depends(_verify_train_key)])
+@app.post("/train", tags=["training"], dependencies=[Depends(verify_train_key)])
 async def train_pipeline():
     stages = [
         DataIngestionTrainingPipeline(),

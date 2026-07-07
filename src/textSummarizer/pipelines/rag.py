@@ -63,7 +63,7 @@ def retrieve_chunks(
 
 
 def rag_summarize(
-    text: str,
+    text: str | list[str],
     summarizer: BaseSummarizer,
     max_length: int = 128,
     query: str | None = None,
@@ -71,6 +71,17 @@ def rag_summarize(
     chunk_size: int = 400,
     overlap: int = 50,
 ) -> str:
+    if isinstance(text, list):
+        return rag_summarize_documents(
+            text,
+            summarizer,
+            max_length=max_length,
+            query=query,
+            top_k=top_k,
+            chunk_size=chunk_size,
+            overlap=overlap,
+        )
+
     chunks = semantic_chunk(text, chunk_size=chunk_size, overlap=overlap)
     if len(chunks) <= 1:
         return stuff_summarize(text, summarizer, max_length=max_length)
@@ -86,4 +97,40 @@ def rag_summarize(
 
     context = "\n\n".join(selected)
     prompt = f"Summarize the following relevant passages:\n\n{context}"
+    return stuff_summarize(prompt, summarizer, max_length=max_length)
+
+
+def rag_summarize_documents(
+    documents: list[str],
+    summarizer: BaseSummarizer,
+    max_length: int = 128,
+    query: str | None = None,
+    top_k: int = 5,
+    chunk_size: int = 400,
+    overlap: int = 50,
+) -> str:
+    """RAG summarization across multiple source documents."""
+    if not documents:
+        return ""
+
+    labeled_chunks: list[str] = []
+    for doc_index, document in enumerate(documents):
+        for chunk in semantic_chunk(document, chunk_size=chunk_size, overlap=overlap):
+            labeled_chunks.append(f"[doc-{doc_index}] {chunk}")
+
+    if len(labeled_chunks) <= 1:
+        merged = "\n\n".join(documents)
+        return stuff_summarize(merged, summarizer, max_length=max_length)
+
+    retrieval_query = query or " ".join(documents)[:500]
+    try:
+        selected = retrieve_chunks(retrieval_query, labeled_chunks, top_k=top_k)
+    except ImportError as exc:
+        raise ImportError(
+            "RAG strategy requires optional dependencies. Install with: "
+            "pip install nexus-forge[rag]"
+        ) from exc
+
+    context = "\n\n".join(selected)
+    prompt = f"Summarize the following relevant passages from multiple documents:\n\n{context}"
     return stuff_summarize(prompt, summarizer, max_length=max_length)

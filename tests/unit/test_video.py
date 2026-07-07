@@ -7,6 +7,15 @@ from textSummarizer.multimodal.router import MultimodalRouter
 from textSummarizer.multimodal.video import FFmpegNotFoundError, VideoSummarizer
 
 
+def test_video_build_chapters():
+    segments = [{"start": 1.0, "end": 3.0, "text": "Introduction to the topic."}]
+    frame_captions = [{"timestamp": 0.5, "caption": "Title slide."}]
+    chapters = VideoSummarizer._build_chapters(segments, frame_captions)
+    assert len(chapters) == 2
+    assert chapters[0]["type"] == "visual"
+    assert chapters[1]["type"] == "speech"
+
+
 def test_merge_content_orders_events_by_timestamp():
     segments = [
         {"start": 5.0, "end": 7.0, "text": "Later speech."},
@@ -55,6 +64,7 @@ def test_video_summarizer_mock(
     assert result["transcript"] == "Welcome to the demo."
     assert "presenter" in result["visual_captions"]
     assert result["summary"]
+    assert "chapters" in result
     mock_extract_audio.assert_called_once()
 
 
@@ -75,6 +85,7 @@ def test_router_video(mock_summarize):
         "model": "extractive",
         "segments": [],
         "frame_captions": [],
+        "chapters": [{"timestamp": 0.0, "type": "speech", "title": "Hello."}],
     }
     router = MultimodalRouter(text_model="extractive")
     result = router.summarize(

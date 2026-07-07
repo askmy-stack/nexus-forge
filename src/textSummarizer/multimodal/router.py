@@ -95,6 +95,7 @@ class MultimodalRouter:
                 "summary": result["summary"],
                 "model": result["model"],
                 "strategy": strategy,
+                "chapters": result.get("chapters"),
             }
 
         raise ValueError(f"Unsupported input type: {input.input_type}")

@@ -1,6 +1,6 @@
 [project]
 name = "nexus-forge"
-version = "1.1.0"
+version = "1.2.0"
 description = "Multimodal summarization platform with MCP agent integration and subjective grading"
 authors = [{ name = "Abhinaysai Kamineni", email = "askmy-stack@users.noreply.github.com" }]
 license = { text = "MIT" }
@@ -48,13 +48,14 @@ Issues = "https://github.com/askmy-stack/nexus-forge/issues"
 Changelog = "https://github.com/askmy-stack/nexus-forge/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-eval = ["bert-score>=0.3.13"]
+eval = ["bert-score>=0.3.13", "deepeval>=2.0"]
 demo = ["gradio>=5.0"]
 mlops = ["mlflow>=2.19", "wandb>=0.19", "dvc>=3.0"]
 multimodal = ["pillow>=10.0", "soundfile>=0.12"]
 mcp = ["mcp>=1.0"]
 onnx = ["optimum[onnxruntime]>=1.23", "onnxruntime>=1.19"]
 rag = ["rank-bm25>=0.2.2", "sentence-transformers>=3.0"]
+langchain = ["langchain-core>=0.3"]
 
 [project.scripts]
 text-summarizer = "textSummarizer.cli:main"

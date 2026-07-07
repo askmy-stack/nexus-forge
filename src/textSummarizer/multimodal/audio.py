@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 
 from textSummarizer.models import ModelFactory
+from textSummarizer.models.cache import cache_key, get_model_cache
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,12 @@ class AudioSummarizer:
         self._pipeline = None
 
     def _load_pipeline(self):
+        cache = get_model_cache()
+        lookup = cache_key("whisper", self.whisper_model)
+        cached = cache.get(lookup)
+        if cached is not None:
+            self._pipeline = cached
+            return self._pipeline
         if self._pipeline is not None:
             return self._pipeline
         try:
@@ -36,6 +43,7 @@ class AudioSummarizer:
             "automatic-speech-recognition",
             model=self.whisper_model,
         )
+        cache.put(lookup, self._pipeline)
         return self._pipeline
 
     def _resolve_audio_path(self, path: str | None, data: bytes | None) -> tuple[str, Path | None]:
