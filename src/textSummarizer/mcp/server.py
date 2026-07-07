@@ -16,6 +16,13 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP("summarizehub")
 
 
+def _warm_cache() -> None:
+    ModelFactory.create("extractive")
+
+
+_warm_cache()
+
+
 @mcp.tool()
 def summarize_text(
     text: str,
