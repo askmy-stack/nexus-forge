@@ -10,6 +10,7 @@ class EvaluationSuite:
         1: ["rouge"],
         2: ["rouge", "bertscore"],
         3: ["rouge", "bertscore", "summac"],
+        4: ["rouge", "bertscore", "summac", "geval"],
     }
 
     def __init__(self, tier: int = 1):
@@ -63,5 +64,14 @@ class EvaluationSuite:
                 results["summac_conv"] = float(score["scores"][0])
             except Exception as exc:
                 logger.warning(f"SummaC unavailable: {exc}")
+
+        if "geval" in self.metric_names and sources:
+            from textSummarizer.grading.geval import geval_score
+
+            geval_scores = [
+                float(geval_score(source, prediction)["geval_score"])
+                for source, prediction in zip(sources, predictions, strict=True)
+            ]
+            results["geval_score"] = float(sum(geval_scores) / len(geval_scores))
 
         return results

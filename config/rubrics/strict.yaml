@@ -1,0 +1,13 @@
+threshold: 4.0
+dimensions:
+  - coherence
+  - faithfulness
+  - fluency
+  - relevance
+  - conciseness
+descriptions:
+  coherence: Logical flow and internal consistency
+  faithfulness: Strict factual alignment with source
+  fluency: Grammar and readability
+  relevance: Coverage of key points
+  conciseness: Brevity without losing essential information

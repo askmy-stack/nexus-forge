@@ -1,0 +1,11 @@
+threshold: 3.5
+dimensions:
+  - coherence
+  - faithfulness
+  - fluency
+  - relevance
+descriptions:
+  coherence: Logical flow and internal consistency of the summary
+  faithfulness: Factual alignment with the source material
+  fluency: Grammar, readability, and natural phrasing
+  relevance: Coverage of the most important source content
