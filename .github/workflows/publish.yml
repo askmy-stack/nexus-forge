@@ -19,7 +19,9 @@ jobs:
           enable-cache: true
 
       - name: Install build tools
-        run: uv pip install --system build twine
+        run: |
+          uv venv
+          uv pip install build twine
 
       - name: Build package
         run: uv run python -m build
