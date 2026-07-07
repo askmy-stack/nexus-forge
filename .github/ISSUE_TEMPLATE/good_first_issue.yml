@@ -1,0 +1,54 @@
+name: Good First Issue
+description: A well-scoped task for new contributors
+title: "[Good First Issue]: "
+labels: ["good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in contributing to Nexus Forge! Good first issues are small, well-defined tasks.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Task description
+      description: What should the contributor implement or fix?
+      placeholder: Add unit tests for the citations pipeline...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Relevant files, docs, or background
+      placeholder: See src/textSummarizer/pipelines/citations.py
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How do we know this is done?
+      placeholder: |
+        - [ ] Tests pass
+        - [ ] Ruff clean
+        - [ ] README updated if needed
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - API / serving
+        - MCP / agents
+        - Multimodal
+        - Evaluation
+        - Documentation
+        - CI / DevOps
+        - Other
+    validations:
+      required: true
