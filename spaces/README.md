@@ -36,6 +36,16 @@ export HF_SPACE_NAME=summarizehub   # optional, default: summarizehub
 
 Enable **ZeroGPU** in Space settings for free GPU bursts. The `@spaces.GPU` decorator in `app.py` requests GPU only during inference.
 
+## Dependencies
+
+`nexus-forge` is not on PyPI yet. The Space installs it from GitHub via `requirements.txt`:
+
+```text
+git+https://github.com/askmy-stack/nexus-forge.git@main
+```
+
+Hugging Face Spaces supports `git+` URLs in `requirements.txt`.
+
 ## Local development
 
 ```bash

@@ -4,4 +4,4 @@ transformers>=4.46,<6
 torch>=2.5
 sentencepiece
 protobuf>=4.0
-nexus-forge
+git+https://github.com/askmy-stack/nexus-forge.git@main
