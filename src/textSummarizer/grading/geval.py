@@ -8,9 +8,7 @@ import os
 logger = logging.getLogger(__name__)
 
 DEFAULT_GEVAL_MODEL = "gpt-4o-mini"
-DEFAULT_CRITERIA = (
-    "Summarization quality on coherence, faithfulness, fluency, and relevance."
-)
+DEFAULT_CRITERIA = "Summarization quality on coherence, faithfulness, fluency, and relevance."
 
 
 def _get_api_key() -> str | None:

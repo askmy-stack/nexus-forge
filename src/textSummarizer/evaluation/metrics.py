@@ -76,9 +76,7 @@ class EvaluationSuite:
             geval_scores = [float(result["geval_score"]) for result in geval_results]
             results["geval_score"] = float(sum(geval_scores) / len(geval_scores))
             methods = {str(result.get("method", "unknown")) for result in geval_results}
-            results["geval_method"] = (
-                "deepeval" if methods == {"deepeval"} else next(iter(methods))
-            )
+            results["geval_method"] = "deepeval" if methods == {"deepeval"} else next(iter(methods))
             if is_geval_available() and self.use_geval is not False:
                 logger.info("Tier %s G-Eval used deepeval LLM judge", self.tier)
 
