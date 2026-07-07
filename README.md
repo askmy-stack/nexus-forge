@@ -14,8 +14,8 @@
 
 ## Live on Hugging Face
 
-- **Space (demo):** [askhugsai/nexus-forge](https://huggingface.co/spaces/askhugsai/nexus-forge)
-- **Fine-tuned model:** [askhugsai/pegasus-samsum](https://huggingface.co/askhugsai/pegasus-samsum)
+- **Space (demo):** [askhugsai/nexus-forge](https://huggingface.co/spaces/askhugsai/nexus-forge) — **RUNNING** at [askhugsai-nexus-forge.hf.space](https://askhugsai-nexus-forge.hf.space)
+- **Fine-tuned model:** [askhugsai/pegasus-samsum](https://huggingface.co/askhugsai/pegasus-samsum) _(upload pending GPU training)_
 
 ## Features
 
