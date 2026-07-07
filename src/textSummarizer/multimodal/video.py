@@ -90,7 +90,7 @@ class VideoSummarizer:
         )
 
     def _extract_keyframes(self, video_path: str, output_dir: Path) -> list[tuple[float, Path]]:
-        """Extract up to max_frames I-frames (keyframes) with timestamps."""
+        """Extract scene-change keyframes with timestamps via ffmpeg scene filter."""
         pattern = output_dir / "frame_%04d.jpg"
         ffmpeg = self._ensure_ffmpeg()
         completed = subprocess.run(
@@ -100,7 +100,7 @@ class VideoSummarizer:
                 "-i",
                 video_path,
                 "-vf",
-                "select='eq(pict_type,I)',showinfo",
+                "select='gt(scene,0.3)',showinfo",
                 "-vsync",
                 "vfr",
                 "-frames:v",
@@ -126,6 +126,36 @@ class VideoSummarizer:
             (timestamps[index] if index < len(timestamps) else float(index), frame_path)
             for index, frame_path in enumerate(frames)
         ]
+
+    @staticmethod
+    def _build_chapters(
+        segments: list[dict[str, float | str]],
+        frame_captions: list[dict[str, float | str]],
+    ) -> list[dict[str, float | str]]:
+        """Build chapter markers from speech segments and visual scene changes."""
+        chapters: list[dict[str, float | str]] = []
+        for segment in segments:
+            text = str(segment.get("text", "")).strip()
+            if text:
+                chapters.append(
+                    {
+                        "timestamp": float(segment["start"]),
+                        "type": "speech",
+                        "title": text[:80],
+                    }
+                )
+        for frame in frame_captions:
+            caption = str(frame.get("caption", "")).strip()
+            if caption:
+                chapters.append(
+                    {
+                        "timestamp": float(frame["timestamp"]),
+                        "type": "visual",
+                        "title": caption[:80],
+                    }
+                )
+        chapters.sort(key=lambda item: float(item["timestamp"]))
+        return chapters
 
     @staticmethod
     def _merge_content(
@@ -165,6 +195,7 @@ class VideoSummarizer:
                 frame_captions.append({"timestamp": timestamp, "caption": caption})
 
             document = self._merge_content(segments, frame_captions)
+            chapters = self._build_chapters(segments, frame_captions)
             transcript = " ".join(
                 str(segment.get("text", "")).strip() for segment in segments if segment.get("text")
             ).strip()
@@ -179,6 +210,7 @@ class VideoSummarizer:
                 "visual_captions": visual_captions,
                 "segments": segments,
                 "frame_captions": frame_captions,
+                "chapters": chapters,
             }
         finally:
             if video_tmp is not None:
@@ -207,4 +239,5 @@ class VideoSummarizer:
             "model": self.text_model,
             "segments": content["segments"],
             "frame_captions": content["frame_captions"],
+            "chapters": content.get("chapters", []),
         }
