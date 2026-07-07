@@ -8,7 +8,7 @@
 [![v1.0.0](https://img.shields.io/badge/release-v1.0.0-green.svg)](https://github.com/askmy-stack/nexus-forge/releases/tag/v1.0.0)
 [![HuggingFace](https://img.shields.io/badge/🤗-Spaces-yellow)](https://huggingface.co/spaces)
 
-![SummarizeHub Demo](docs/assets/demo.gif)
+![SummarizeHub Demo](docs/assets/demo-v2.gif)
 
 **Nexus Forge** (SummarizeHub) is a production-ready NLP platform for multimodal summarization. Use it as a library, CLI, REST API, MCP server for AI agents, or [HuggingFace Space](https://huggingface.co/spaces) demo. One API surface across extractive and abstractive models, with a grading loop for quality-driven refinement.
 
