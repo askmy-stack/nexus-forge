@@ -39,15 +39,34 @@ Requires `PYPI_API_TOKEN` secret in GitHub repository settings.
 
 ### Prerequisites
 
-- HuggingFace account
-- `hf` CLI authenticated (`hf auth login`)
-
-### Deploy
+- HuggingFace account ([askhugsai profile](https://huggingface.co/askhugsai))
+- `hf` CLI installed (`pip install huggingface_hub` or `uv tool install huggingface_hub`)
+- **You must authenticate locally** — we cannot run `hf auth login` or upload without your token:
 
 ```bash
-export HF_USERNAME=your-username
-export HF_SPACE_NAME=summarizehub   # optional, default: summarizehub
+hf auth login
+```
+
+### Deploy (after login)
+
+Set your username and token, then run the deploy script (it uploads `spaces/` to the Hub; do not run upload commands without a valid token):
+
+```bash
+export HF_TOKEN=hf_...
+export HF_USERNAME=askhugsai
+export HF_SPACE_NAME=nexus-forge   # optional; default in script: summarizehub
 ./scripts/deploy_hf_space.sh
+```
+
+**Live Space:** [https://huggingface.co/spaces/askhugsai/nexus-forge](https://huggingface.co/spaces/askhugsai/nexus-forge)
+
+### Manual create (optional)
+
+If the Space does not exist yet, the script creates it with CPU Basic hardware. Equivalent CLI:
+
+```bash
+hf repo create nexus-forge --type space --space-sdk gradio --flavor cpu-basic
+hf upload askhugsai/nexus-forge spaces/ --repo-type space
 ```
 
 ### GPU-backed Space
@@ -55,10 +74,11 @@ export HF_SPACE_NAME=summarizehub   # optional, default: summarizehub
 For abstractive models, upgrade hardware in Space settings or during creation:
 
 ```bash
-hf repo create summarizehub --type space --space-sdk gradio --space-hardware "t4-small"
+hf repo create nexus-forge --type space --space-sdk gradio --flavor t4-small
 ```
 
 Set `HF_TOKEN` as a Space secret for gated models.
+
 
 ## GPU Training (Pegasus)
 
