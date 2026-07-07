@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.responses import RedirectResponse, StreamingResponse
 
 from textSummarizer.components.prediction import PredictionPipeline
+from textSummarizer.grading.geval import geval_score
 from textSummarizer.grading.llm_judge import LLMJudge
 from textSummarizer.grading.rubric import GradingRubric
 from textSummarizer.models import ModelFactory
@@ -27,6 +28,7 @@ from textSummarizer.serving.auth import (
     verify_api_key,
     verify_train_key,
 )
+from textSummarizer.serving.gpu_pool import get_gpu_pool
 
 API_VERSION = "1.2.0"
 MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
@@ -123,11 +125,22 @@ class MultimodalResponse(BaseModel):
     chapters: list[dict] | None = None
 
 
+class GEvalResult(BaseModel):
+    geval_score: float
+    geval_reason: str
+    method: str
+    model: str | None = None
+
+
 class GradeRequest(BaseModel):
     source: str = Field(..., min_length=1, max_length=50000, description="Source text")
     summary: str = Field(..., min_length=1, max_length=10000, description="Summary to grade")
     threshold: float = Field(default=3.5, ge=1.0, le=5.0, description="Pass threshold (1-5)")
     rubric: str | None = Field(default=None, description="YAML rubric name from config/rubrics/")
+    use_geval: bool = Field(
+        default=False,
+        description="Run deepeval G-Eval LLM judge when API key is configured",
+    )
 
 
 class GradeScoreResponse(BaseModel):
@@ -143,20 +156,28 @@ class GradeResponse(BaseModel):
     score: GradeScoreResponse
     passes: bool
     threshold: float
+    geval: GEvalResult | None = None
+
+
+def _summarize_impl(request: SummarizeRequest) -> str:
+    if request.model == "pegasus":
+        pipeline = PredictionPipeline(model_name="pegasus")
+        return pipeline.predict(
+            request.text, strategy=request.strategy, max_length=request.max_length
+        )
+
+    pool = get_gpu_pool()
+    summarizer = pool.get_model(request.model, lambda: ModelFactory.create(request.model))
+    return summarizer.summarize(
+        request.text, max_length=request.max_length, strategy=request.strategy
+    )
 
 
 def _run_summarization(request: SummarizeRequest) -> str:
     try:
-        if request.model == "pegasus":
-            pipeline = PredictionPipeline(model_name="pegasus")
-            return pipeline.predict(
-                request.text, strategy=request.strategy, max_length=request.max_length
-            )
-
-        summarizer = ModelFactory.create(request.model)
-        return summarizer.summarize(
-            request.text, max_length=request.max_length, strategy=request.strategy
-        )
+        if request.model == "extractive":
+            return _summarize_impl(request)
+        return get_gpu_pool().run(_summarize_impl, request)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -380,10 +401,22 @@ async def grade_summary(request: GradeRequest):
         rubric = GradingRubric(threshold=request.threshold)
     judge = LLMJudge(use_llm=False)
     score = judge.grade(request.source, request.summary)
+
+    geval_payload: GEvalResult | None = None
+    if request.use_geval:
+        raw = geval_score(request.source, request.summary, use_geval=True)
+        geval_payload = GEvalResult(
+            geval_score=float(raw["geval_score"]),
+            geval_reason=str(raw["geval_reason"]),
+            method=str(raw["method"]),
+            model=str(raw["model"]) if raw.get("model") else None,
+        )
+
     return GradeResponse(
         score=GradeScoreResponse(**score.to_dict()),
         passes=rubric.passes(score),
         threshold=rubric.threshold,
+        geval=geval_payload,
     )
 
 

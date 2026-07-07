@@ -34,7 +34,18 @@ export HF_SPACE_NAME=summarizehub   # optional, default: summarizehub
 # then upload the `spaces/` directory from this repo.
 ```
 
-Enable **ZeroGPU** in Space settings for free GPU bursts. The `@spaces.GPU` decorator in `app.py` requests GPU only during inference.
+Enable **ZeroGPU** in Space settings for free GPU bursts. The `@spaces.GPU(duration=60)` decorator in `app.py` requests GPU only during inference (60-second allocation window per call).
+
+### Hardware upgrade path
+
+| Tier | Use case | How to enable |
+|------|----------|---------------|
+| **ZeroGPU** | Demo / bursty traffic | Space Settings → Hardware → ZeroGPU |
+| **CPU Basic** | Extractive-only fallback | Default for new Spaces |
+| **T4 small** | Sustained abstractive load | Space Settings → Hardware → T4 small |
+| **A10G / A100** | Training or heavy batch | Upgrade in Settings or `hf repo create ... --flavor a10g-small` |
+
+`spaces/space.yaml` mirrors README frontmatter (`sdk: gradio`, `app_file: app.py`, `hardware: zero-gpu`).
 
 ## Dependencies
 

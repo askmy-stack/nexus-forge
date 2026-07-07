@@ -13,11 +13,12 @@ class EvaluationSuite:
         4: ["rouge", "bertscore", "summac", "geval"],
     }
 
-    def __init__(self, tier: int = 1):
+    def __init__(self, tier: int = 1, use_geval: bool | None = None):
         if tier not in self.TIER_METRICS:
             raise ValueError(f"Invalid tier {tier}. Choose from {list(self.TIER_METRICS)}")
         self.tier = tier
         self.metric_names = self.TIER_METRICS[tier]
+        self.use_geval = use_geval
         self._metrics: dict = {}
 
     def _load_metric(self, name: str):
@@ -66,12 +67,19 @@ class EvaluationSuite:
                 logger.warning(f"SummaC unavailable: {exc}")
 
         if "geval" in self.metric_names and sources:
-            from textSummarizer.grading.geval import geval_score
+            from textSummarizer.grading.geval import geval_score, is_geval_available
 
-            geval_scores = [
-                float(geval_score(source, prediction)["geval_score"])
+            geval_results = [
+                geval_score(source, prediction, use_geval=self.use_geval)
                 for source, prediction in zip(sources, predictions, strict=True)
             ]
+            geval_scores = [float(result["geval_score"]) for result in geval_results]
             results["geval_score"] = float(sum(geval_scores) / len(geval_scores))
+            methods = {str(result.get("method", "unknown")) for result in geval_results}
+            results["geval_method"] = (
+                "deepeval" if methods == {"deepeval"} else next(iter(methods))
+            )
+            if is_geval_available() and self.use_geval is not False:
+                logger.info("Tier %s G-Eval used deepeval LLM judge", self.tier)
 
         return results

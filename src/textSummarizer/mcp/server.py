@@ -5,6 +5,7 @@ import logging
 
 from mcp.server.fastmcp import FastMCP
 
+from textSummarizer.grading.geval import geval_score, is_geval_available
 from textSummarizer.grading.llm_judge import LLMJudge
 from textSummarizer.grading.rubric import GradingRubric
 from textSummarizer.models import ModelFactory
@@ -108,18 +109,33 @@ def list_models() -> str:
 
 
 @mcp.tool()
-def grade_summary(source: str, summary: str, threshold: float = 3.5) -> str:
-    """Subjective LLM-rubric grading of a summary against its source."""
+def grade_summary(
+    source: str,
+    summary: str,
+    threshold: float = 3.5,
+    use_geval: bool | None = None,
+) -> str:
+    """Subjective LLM-rubric grading of a summary against its source.
+
+    When OPENAI_API_KEY or GEVAL_API_KEY is set, G-Eval deepeval judging runs
+    automatically unless use_geval=False.
+    """
     rubric = GradingRubric(threshold=threshold)
     judge = LLMJudge(use_llm=False)
     score = judge.grade(source, summary)
-    return json.dumps(
-        {
-            "score": score.to_dict(),
-            "passes": rubric.passes(score),
-            "threshold": threshold,
-        }
-    )
+
+    payload: dict = {
+        "score": score.to_dict(),
+        "passes": rubric.passes(score),
+        "threshold": threshold,
+    }
+
+    run_geval = use_geval if use_geval is not None else is_geval_available()
+    if run_geval:
+        geval_result = geval_score(source, summary, use_geval=use_geval)
+        payload["geval"] = geval_result
+
+    return json.dumps(payload)
 
 
 def main():

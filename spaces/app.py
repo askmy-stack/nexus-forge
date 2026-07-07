@@ -23,7 +23,7 @@ def _summarize_impl(text: str, model: str, strategy: str, max_length: int) -> st
 
 if spaces is not None:
 
-    @spaces.GPU(duration=120)
+    @spaces.GPU(duration=60)
     def summarize(text: str, model: str, strategy: str, max_length: int) -> str:
         return _summarize_impl(text, model, strategy, max_length)
 

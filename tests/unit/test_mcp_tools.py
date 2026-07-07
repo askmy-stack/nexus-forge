@@ -77,6 +77,26 @@ def test_grade_summary_tool():
     assert 1 <= data["score"]["coherence"] <= 5
 
 
+def test_grade_summary_tool_with_geval():
+    mock_geval = {
+        "geval_score": 0.85,
+        "geval_reason": "Good summary.",
+        "method": "deepeval",
+        "model": "gpt-4o-mini",
+    }
+    with (
+        patch("textSummarizer.mcp.server.is_geval_available", return_value=True),
+        patch("textSummarizer.mcp.server.geval_score", return_value=mock_geval),
+    ):
+        result = mcp_server.grade_summary(
+            source="AI transforms healthcare and finance.",
+            summary="AI transforms healthcare.",
+        )
+    data = json.loads(result)
+    assert data["geval"]["method"] == "deepeval"
+    assert data["geval"]["geval_score"] == 0.85
+
+
 @pytest.mark.parametrize(
     "tool_name",
     [
